@@ -1,5 +1,7 @@
 package com.mariaribeiro.nexo.api;
 
+import java.time.Instant;
+import java.util.Map;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -7,7 +9,10 @@ import org.springframework.web.bind.annotation.RestController;
 public class HealthController {
 
     @GetMapping("/health")
-    public String health() {
-        return "OK";
+    public Map<String, Object> health() {
+        return Map.of(
+                "status", "UP",
+                "service", "nexo-api",
+                "timestamp", Instant.now().toString());
     }
 }

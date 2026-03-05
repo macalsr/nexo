@@ -1,16 +1,14 @@
-# Nexo API Documentation
+# Nexo Platform Documentation
 
 ## 1. Overview
-Nexo is a backend API built with Java 21 and Spring Boot. This foundation delivers a predictable local/CI setup with PostgreSQL + Flyway, so future features can be built on a stable baseline.
+Nexo is composed of:
+- Backend API (`Spring Boot`, Java 21)
+- Frontend app (`React + Vite`, mobile-first PWA foundation)
 
-## 2. Foundation Epic Delivered
-- Spring Boot API bootstrapped with Web, Validation, JPA, Flyway, and Actuator.
-- Local PostgreSQL via Docker Compose.
-- Flyway versioned schema migration applied at startup.
-- Health endpoint available at `GET /health`.
-- CI workflow provisions PostgreSQL and runs tests with migrations applied.
+This repository now validates both backend reliability and mobile-first installability early.
 
-## 3. Tech Stack
+## 2. Tech Stack
+### Backend
 - Java 21
 - Spring Boot 4.0.3
 - Spring Web MVC
@@ -19,128 +17,153 @@ Nexo is a backend API built with Java 21 and Spring Boot. This foundation delive
 - PostgreSQL 15 (Docker)
 - Maven Wrapper (`./mvnw`)
 
-## 4. Architecture Direction
-Target architecture (hexagonal):
-- `domain`: business rules and invariants.
-- `application`: use cases and ports.
-- `adapters`: inbound REST and outbound persistence/external clients.
-- `infrastructure`: framework wiring.
+### Frontend
+- React 19 + TypeScript
+- Vite 6.4.1
+- React Router DOM
+- PWA manifest + service worker
 
-## 5. Repository Structure
+## 3. Repository Structure
 ```text
 .github/workflows/
-+-- ci.yml
+└── ci.yml
 
 docker/
-+-- docker-compose.yml
+└── docker-compose.yml
+
+frontend/
+|-- src/
+|   |-- config/env.ts
+|   |-- pages/LoginPage.tsx
+|   |-- pages/AppPage.tsx
+|   `-- ...
+|-- public/
+|   |-- manifest.webmanifest
+|   |-- sw.js
+|   `-- icons/
+`-- .env.example
 
 src/main/java/com/mariaribeiro/nexo
 +-- NexoApplication.java
-+-- api/
-    +-- HealthController.java
++-- api/HealthController.java
 
 src/main/resources
 +-- application.properties
 +-- application-local.properties
-+-- db/migration/
-    +-- V1__create_app_metadata.sql
-
-src/test/resources
-+-- application.properties
-
-src/test/java/com/mariaribeiro/nexo
-+-- NexoApplicationTests.java
++-- db/migration/V1__create_app_metadata.sql
 ```
-
-## 6. Prerequisites
+## 4. Local Development
+### 4.1 Backend prerequisites
 - JDK 21
 - Docker + Docker Compose
 
-## 7. Local Development
-### 7.1 Start only PostgreSQL
+### 4.2 Start backend database
 ```bash
 docker compose -f docker/docker-compose.yml up -d postgres
 ```
 
-### 7.2 Run API on host (recommended for development)
+### 4.3 Run backend
 ```bash
 ./mvnw spring-boot:run
 ```
 
-### 7.3 One-command dev environment (Postgres + API in containers)
+### 4.4 Run frontend
 ```bash
-docker compose -f docker/docker-compose.yml --profile app up --build
+cd frontend
+npm install
+npm run dev
 ```
 
-### 7.4 Stop containers
-```bash
-docker compose -f docker/docker-compose.yml down
-```
+Frontend default URL: `http://localhost:5173`
 
-## 8. Configuration Profiles
-### 8.1 `local` profile
+## 5. Backend Configuration
+### 5.1 `local` profile
 File: `src/main/resources/application-local.properties`
-- Uses PostgreSQL via env vars:
-  - `DB_HOST` (default: `localhost`)
-  - `DB_PORT` (default: `5432`)
-  - `DB_NAME` (default: `nexo`)
-  - `DB_USER` (default: `nexo`)
-  - `DB_PASSWORD` (default: `nexo`)
-- Flyway enabled and runs automatically on startup.
+- `DB_HOST` (default `localhost`)
+- `DB_PORT` (default `5432`)
+- `DB_NAME` (default `nexo`)
+- `DB_USER` (default `nexo`)
+- `DB_PASSWORD` (default `nexo`)
 
-### 8.2 test configuration
+### 5.2 Test profile
 File: `src/test/resources/application.properties`
-- Defaults to H2 for fast local tests.
-- Can be switched to PostgreSQL via `TEST_DB_*` and `TEST_FLYWAY_*` env vars.
+- Defaults to H2
+- Can target PostgreSQL through `TEST_DB_*` and `TEST_FLYWAY_*`
 
-## 9. Database Migration (Flyway)
-Migration files:
-- `src/main/resources/db/migration/V1__create_app_metadata.sql`
+## 6. Frontend Configuration
+File: `frontend/.env.example`
+- `VITE_API_BASE_URL=http://localhost:8080`
 
-Behavior:
-- Flyway runs before application startup completes.
-- Schema history tracked by Flyway.
+Usage:
+- Vite injects values from `.env` files into `import.meta.env`
+- App reads this from `src/config/env.ts`
 
-## 10. API Contract
-### 10.1 Health
+## 7. Backend API Contract
+### 7.1 Health
 - Method: `GET`
 - Path: `/health`
-- Response: `200 OK`
-- Body: `OK`
+- Public endpoint (no auth)
+- Response: `200 OK` JSON
+  - `status`: `UP`
+  - `service`: `nexo-api`
+  - `timestamp`: ISO-8601 UTC datetime
 
 Example:
 ```bash
 curl -i http://localhost:8080/health
 ```
 
-## 11. Testing
-### 11.1 Run all tests
+## 8. Frontend Routes
+- `/login`: login placeholder screen
+- `/app`: app placeholder screen
+
+Both routes exist to validate navigation structure before auth and final UI implementation.
+
+## 9. PWA Installability
+Implemented foundation:
+- `manifest.webmanifest` with app metadata and icons
+- service worker (`public/sw.js`) registration in `src/main.tsx`
+- standalone display mode and mobile metadata in `index.html`
+
+Validation checklist:
+- App loads in browser
+- Browser detects manifest/service worker
+- "Add to Home Screen" appears on supported mobile browsers
+
+## 10. Testing and Build
+### 10.1 Backend tests
 ```bash
 ./mvnw -q test
 ```
 
-### 11.2 Migration proof test
-`NexoApplicationTests` checks that Flyway migration created table `app_metadata`.
+### 10.2 Frontend build
+```bash
+cd frontend
+npm run build
+```
 
-## 12. CI
+## 11. CI
 Workflow file:
 - `.github/workflows/ci.yml`
 
-Pipeline behavior:
-- Starts PostgreSQL 15 service.
-- Exposes test datasource via env vars.
-- Runs `./mvnw -q test`.
-- Validates application context + Flyway migration execution.
+Current CI validates backend tests with PostgreSQL + Flyway migrations.
 
-## 13. Quality and Contribution Rules
+## 12. Quality and Contribution Rules
 This repository enforces agent rules in `AGENTS.md`.
 
 Mandatory documentation rule:
 - Every feature must update `README.md` in the same PR.
 - Feature work is incomplete if README documentation is not updated.
 
-## 14. Feature Changelog (Portfolio)
+## 13. Feature Changelog (Portfolio)
 > This section must be updated for every feature.
+
+### 2026-03-05 - Frontend PWA Foundation (FOUNDATION)
+- Created `frontend/` app with React + TypeScript + Vite.
+- Added placeholder routes for `/login` and `/app`.
+- Added environment-based API URL through `VITE_API_BASE_URL`.
+- Added installable PWA base with manifest, icons, and service worker registration.
+- Why it matters: validates mobile-first runtime assumptions and prevents rework before auth/UI epics.
 
 ### 2026-03-05 - Setup Spring Boot + Docker + Flyway (FOUNDATION)
 - Added `local` runtime config with PostgreSQL + automatic Flyway migration.
@@ -149,12 +172,18 @@ Mandatory documentation rule:
 - Added CI workflow using PostgreSQL service and tests that verify migration output.
 - Why it matters: establishes a deterministic backend foundation that scales for future epics and demonstrates production-minded setup in portfolio reviews.
 
+### 2026-03-05 - Health Endpoint Contract (FOUNDATION)
+- Updated `GET /health` to return structured JSON for monitoring compatibility.
+- Added HTTP controller test validating `200`, JSON response type, and health fields.
+- Endpoint remains public (no authentication requirement).
+- Why it matters: improves fast runtime validation for development and future hosting checks.
+
 ### 2026-03-05 - README Documentation Standard
 - Created a structured, documentation-first README.
 - Added clear operational sections (setup, run, tests, API contract, configuration).
 - Why it matters: improves technical communication and makes the project reviewable for portfolio and hiring contexts.
 
-## 15. Feature Entry Template
+## 14. Feature Entry Template
 Use this template in future PRs:
 
 ```md
@@ -165,3 +194,4 @@ Use this template in future PRs:
 - Testing: what was added/updated.
 - Why it matters: portfolio-oriented outcome in one sentence.
 ```
+

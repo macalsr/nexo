@@ -1,0 +1,28 @@
+{
+  "name": "Nexo Finance",
+  "short_name": "Nexo",
+  "description": "Personal finance companion with mobile-first experience.",
+  "theme_color": "#0b1f33",
+  "background_color": "#f5f7fb",
+  "display": "standalone",
+  "start_url": "/login",
+  "scope": "/",
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
