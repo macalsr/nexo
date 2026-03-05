@@ -3,6 +3,22 @@ target/
 .mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/
 !**/src/test/**/target/
+.DS_Store
+Thumbs.db
+*.log
+logs/
+*.pid
+*.seed
+*.stackdump
+coverage/
+.coverage
+.nyc_output/
+out/
+tmp/
+temp/
+.env
+.env.*
+!.env.example
 
 ### STS ###
 .apt_generated
@@ -18,6 +34,8 @@ target/
 *.iws
 *.iml
 *.ipr
+.idea/**/workspace.xml
+.idea/**/tasks.xml
 
 ### NetBeans ###
 /nbproject/private/
