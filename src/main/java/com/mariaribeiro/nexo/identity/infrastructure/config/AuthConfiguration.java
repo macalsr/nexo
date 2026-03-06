@@ -7,10 +7,13 @@ import com.mariaribeiro.nexo.identity.application.usecase.LoginService;
 import com.mariaribeiro.nexo.identity.application.usecase.LoginUseCase;
 import com.mariaribeiro.nexo.identity.infrastructure.persistence.SpringDataUserRepository;
 import com.mariaribeiro.nexo.identity.infrastructure.persistence.UserPersistenceAdapter;
+import com.mariaribeiro.nexo.identity.infrastructure.security.AuthenticationRequestContext;
 import com.mariaribeiro.nexo.identity.infrastructure.security.AuthTokenProperties;
+import com.mariaribeiro.nexo.identity.infrastructure.security.BearerTokenAuthenticationFilter;
 import com.mariaribeiro.nexo.identity.infrastructure.security.BcryptPasswordHashVerifier;
 import com.mariaribeiro.nexo.identity.infrastructure.security.JwtTokenService;
 import java.time.Clock;
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -44,6 +47,22 @@ public class AuthConfiguration {
     @Bean
     TokenServicePort tokenServicePort(Clock authClock, AuthTokenProperties properties) {
         return new JwtTokenService(authClock, properties);
+    }
+
+    @Bean
+    AuthenticationRequestContext authenticationRequestContext() {
+        return new AuthenticationRequestContext();
+    }
+
+    @Bean
+    FilterRegistrationBean<BearerTokenAuthenticationFilter> bearerTokenAuthenticationFilter(
+            TokenServicePort tokenServicePort,
+            AuthenticationRequestContext authenticationRequestContext) {
+        FilterRegistrationBean<BearerTokenAuthenticationFilter> registrationBean = new FilterRegistrationBean<>();
+        registrationBean.setFilter(new BearerTokenAuthenticationFilter(tokenServicePort, authenticationRequestContext));
+        registrationBean.addUrlPatterns("/*");
+        registrationBean.setOrder(1);
+        return registrationBean;
     }
 
     @Bean

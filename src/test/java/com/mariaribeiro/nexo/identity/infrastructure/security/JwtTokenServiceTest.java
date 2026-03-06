@@ -48,4 +48,20 @@ class JwtTokenServiceTest {
                 .isInstanceOf(InvalidTokenException.class)
                 .hasMessage("Token expired");
     }
+
+    @Test
+    void rejectsTokensSignedWithDifferentSecret() {
+        Clock clock = Clock.fixed(Instant.parse("2026-03-06T12:00:00Z"), ZoneOffset.UTC);
+        JwtTokenService issuingService = new JwtTokenService(clock, properties(Duration.ofHours(24)));
+        String token = issuingService.issueToken(UUID.randomUUID(), "person@example.com").value();
+
+        AuthTokenProperties differentSecretProperties = new AuthTokenProperties();
+        differentSecretProperties.setSecret("another-local-dev-jwt-secret-key-1234567890");
+        differentSecretProperties.setAccessTokenTtl(Duration.ofHours(24));
+        JwtTokenService verifyingService = new JwtTokenService(clock, differentSecretProperties);
+
+        assertThatThrownBy(() -> verifyingService.verify(token))
+                .isInstanceOf(InvalidTokenException.class)
+                .hasMessage("Token invalid");
+    }
 }

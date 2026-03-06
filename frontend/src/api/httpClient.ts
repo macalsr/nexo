@@ -1,4 +1,5 @@
 import { env } from '../config/env'
+import { getAccessToken } from '../auth/tokenStorage'
 
 type Primitive = string | number | boolean | null
 type JsonValue = Primitive | JsonValue[] | { [key: string]: JsonValue }
@@ -38,7 +39,16 @@ function buildHeaders(customHeaders?: HeadersInit) {
     headers.set('Accept', 'application/json')
   }
 
-  // Keep header creation isolated so future auth token injection lands in one place.
+  if (!headers.has('Content-Type')) {
+    headers.set('Content-Type', 'application/json')
+  }
+
+  const accessToken = getAccessToken()
+
+  if (accessToken && !headers.has('Authorization')) {
+    headers.set('Authorization', `Bearer ${accessToken}`)
+  }
+
   return headers
 }
 

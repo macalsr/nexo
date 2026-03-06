@@ -142,6 +142,23 @@ curl -i -X POST http://localhost:8080/auth/login \
   -d '{"email":"person@example.com","password":"secret123"}'
 ```
 
+### 7.3 Authenticated Identity
+- Method: `GET`
+- Path: `/me`
+- Protected endpoint
+- Requires `Authorization: Bearer <access-token>`
+- Success response: `200 OK` JSON
+  - `userId`
+  - `email`
+- Failure response: `401 Unauthorized` JSON
+  - `message`: `Unauthorized`
+
+Authentication enforcement:
+- `/health` remains public.
+- `/auth/login` remains public.
+- Protected routes reject missing, invalid, and expired tokens with the same generic `401` response.
+- Valid tokens attach authenticated user identity to the request context for downstream use.
+
 ## 8. Authentication Persistence Foundation
 - Table: `users`
 - Columns:
@@ -159,10 +176,14 @@ Why this matters:
 - This removes ambiguity around case sensitivity and keeps authentication persistence compatible with future shared-account ownership.
 
 ## 9. Frontend Routes
-- `/login`: login placeholder screen
-- `/app`: app placeholder screen
+- `/login`: email/password login page with client-side validation and generic auth failure handling
+- `/app`: post-login app shell route, guarded by local access-token presence
 
-Both routes exist to validate navigation structure before auth and final UI implementation.
+MVP auth flow:
+- Login submits to `POST /auth/login`
+- On success, the frontend stores `accessToken` in browser `localStorage` under `nexo.accessToken`
+- The app redirects to `/app`
+- On failure, the UI shows only `Invalid credentials`
 
 ## 10. PWA Installability
 Implemented foundation:
@@ -217,6 +238,13 @@ Mandatory documentation rule:
 - Defined a default access-token expiration policy of `24 hours`.
 - Why it matters: provides the first secure session-start mechanism needed before protecting finance features behind authentication.
 
+### 2026-03-06 - Protected Route Authentication Enforcement (FOUNDATION)
+- Added centralized bearer-token enforcement for protected routes while keeping `/health` and `/auth/login` public.
+- Added `GET /auth/me` as a minimal protected endpoint that exposes the authenticated user identity from the request context.
+- Standardized protected-route auth failures to `401` with the generic message `Unauthorized` for missing, invalid, and expired tokens.
+- Propagated authenticated user identity through the request context for future audit and workspace authorization logic.
+- Why it matters: turns token issuance into actual access control and creates the extension point for future authorization rules.
+
 ### 2026-03-05 - Frontend PWA Foundation (FOUNDATION)
 - Created `frontend/` app with React + TypeScript + Vite.
 - Added placeholder routes for `/login` and `/app` with a mobile-first shell.
@@ -236,6 +264,13 @@ Mandatory documentation rule:
 - Added `frontend/src/api/healthApi.ts` so feature modules call small API wrappers instead of raw HTTP primitives.
 - Prepared the client for future token injection by isolating request header construction in one place.
 - Why it matters: prevents scattered networking logic and makes future authentication changes additive instead of invasive.
+
+### 2026-03-06 - Frontend Login MVP (FOUNDATION)
+- Replaced the `/login` placeholder with a real email/password form that validates required fields and basic email format before submission.
+- Added a frontend auth API wrapper plus local token storage under `nexo.accessToken`.
+- Wired centralized bearer-token injection into the shared HTTP client and guarded `/app` behind token presence.
+- Standardized failed login UX to the generic message `Invalid credentials` without exposing backend internals.
+- Why it matters: completes the first usable session-start flow so portfolio reviewers can see the frontend and backend authentication path working end to end.
 
 ### 2026-03-05 - Setup Spring Boot + Docker + Flyway (FOUNDATION)
 - Added `local` runtime config with PostgreSQL + automatic Flyway migration.

@@ -43,6 +43,10 @@
   margin-top: 1.5rem;
 }
 
+.compact-stack {
+  margin-top: 1.25rem;
+}
+
 .info-tile {
   display: grid;
   gap: 0.25rem;
@@ -68,6 +72,46 @@
   margin-top: 1.5rem;
 }
 
+.auth-form {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+}
+
+.field {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.field-label {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #dbe4f0;
+}
+
+.field-input {
+  min-height: 3rem;
+  width: 100%;
+  padding: 0.85rem 1rem;
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  border-radius: 1rem;
+  background: rgba(15, 23, 42, 0.75);
+  color: #f8fafc;
+  font: inherit;
+}
+
+.field-input:focus {
+  outline: 2px solid rgba(56, 189, 248, 0.65);
+  outline-offset: 2px;
+}
+
+.field-error,
+.form-error {
+  margin: 0;
+  font-size: 0.875rem;
+  color: #fda4af;
+}
+
 .primary-action,
 .secondary-action {
   width: 100%;
@@ -83,6 +127,13 @@
 .primary-action {
   background: linear-gradient(135deg, #38bdf8, #22c55e);
   color: #08111f;
+  border: 0;
+  cursor: pointer;
+}
+
+.primary-action:disabled {
+  opacity: 0.7;
+  cursor: wait;
 }
 
 .secondary-action {
