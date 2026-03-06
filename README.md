@@ -142,7 +142,34 @@ curl -i -X POST http://localhost:8080/auth/login \
   -d '{"email":"person@example.com","password":"secret123"}'
 ```
 
-### 7.3 Authenticated Identity
+### 7.3 Signup
+- Method: `POST`
+- Path: `/auth/signup`
+- Public endpoint
+- Request body:
+  - `email`
+  - `password`
+- Validation:
+  - `email` must be present and a valid email address
+  - `password` must be present and at least `8` characters
+- Email normalization rule:
+  - the backend normalizes accepted emails by trimming whitespace and converting to lowercase with `Locale.ROOT` before persistence and token issuance
+- Success response strategy:
+  - Option B
+  - returns `201 Created` JSON with `accessToken` and `expiresAt`
+  - automatically authenticates the newly created user
+- Failure responses:
+  - `400 Bad Request` with `message` and field-level `errors`
+  - `409 Conflict` with the generic message `Unable to create account` when the normalized email already exists
+
+Example:
+```bash
+curl -i -X POST http://localhost:8080/auth/signup \
+  -H "Content-Type: application/json" \
+  -d '{"email":"person@example.com","password":"secret123"}'
+```
+
+### 7.4 Authenticated Identity
 - Method: `GET`
 - Path: `/me`
 - Protected endpoint
@@ -177,12 +204,19 @@ Why this matters:
 
 ## 9. Frontend Routes
 - `/login`: email/password login page with client-side validation and generic auth failure handling
-- `/app`: post-login app shell route, guarded by local access-token presence
+- `/signup`: email/password signup page with client-side validation and immediate authenticated access on success
+- `/app`: post-login app shell route, guarded by centralized session validation
 
 MVP auth flow:
+- Signup submits to `POST /auth/signup`
+- On valid signup, the frontend stores the returned `accessToken` and navigates directly to `/app`
 - Login submits to `POST /auth/login`
 - On success, the frontend stores `accessToken` in browser `localStorage` under `nexo.accessToken`
 - The app redirects to `/app`
+- Visiting `/app` without a token redirects immediately to `/login`
+- Visiting `/app` with a stored token triggers `GET /me` before protected content renders
+- If `GET /me` returns `401`, the frontend clears `nexo.accessToken` and redirects to `/login`
+- While `GET /me` is in flight, the route guard renders a loading state instead of the protected page
 - On failure, the UI shows only `Invalid credentials`
 
 ## 10. PWA Installability
@@ -206,6 +240,12 @@ Validation checklist:
 ```bash
 cd frontend
 npm run build
+```
+
+### 11.3 Frontend tests
+```bash
+cd frontend
+npm test
 ```
 
 ## 12. CI
@@ -271,6 +311,26 @@ Mandatory documentation rule:
 - Wired centralized bearer-token injection into the shared HTTP client and guarded `/app` behind token presence.
 - Standardized failed login UX to the generic message `Invalid credentials` without exposing backend internals.
 - Why it matters: completes the first usable session-start flow so portfolio reviewers can see the frontend and backend authentication path working end to end.
+
+### 2026-03-06 - Frontend Session Validation Guard (FOUNDATION)
+- Centralized `/app` route protection in a single guard that blocks unauthenticated access and redirects to `/login`.
+- Added frontend `GET /me` session validation before any protected content is rendered after navigation or page reload.
+- Cleared the stored access token and redirected to `/login` on `401 Unauthorized` session validation failures.
+- Added an in-guard loading state while session validation is running so the app shell never flashes before auth is confirmed.
+- Why it matters: makes the MVP authenticated flow reliable across reloads and prevents protected UI from rendering on stale sessions.
+
+### 2026-03-06 - Frontend Route Guard Test Coverage (FOUNDATION)
+- Added Vitest + Testing Library to automate frontend route-guard verification.
+- Covered unauthenticated redirects, in-flight session validation loading UI, and stored-token invalidation on `401` from `GET /me`.
+- Added a frontend `npm test` command and shared test setup for DOM assertions.
+- Why it matters: turns the auth guard from a manual browser check into a repeatable regression safety net.
+
+### 2026-03-06 - Signup MVP (FOUNDATION)
+- Added `POST /auth/signup` with request validation, duplicate-email conflict handling, normalized email persistence, BCrypt password hashing, and `created_at` population.
+- Chose Option B: successful signup returns `201 Created` with an access token so the new user is immediately authenticated.
+- Added frontend `/signup` flow that stores the returned token and routes directly into the protected app shell.
+- Added backend and frontend automated tests covering signup success, validation failures, duplicate protection, and client navigation.
+- Why it matters: removes manual database setup friction and makes the first-time authenticated experience usable end to end.
 
 ### 2026-03-05 - Setup Spring Boot + Docker + Flyway (FOUNDATION)
 - Added `local` runtime config with PostgreSQL + automatic Flyway migration.

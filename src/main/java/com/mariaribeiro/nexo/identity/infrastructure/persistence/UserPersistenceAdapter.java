@@ -1,10 +1,14 @@
 package com.mariaribeiro.nexo.identity.infrastructure.persistence;
 
+import com.mariaribeiro.nexo.identity.application.port.CreateUserPort;
 import com.mariaribeiro.nexo.identity.application.port.LoadUserByEmailPort;
 import com.mariaribeiro.nexo.identity.application.usecase.AuthenticatedUserView;
+import com.mariaribeiro.nexo.identity.application.usecase.DuplicateEmailException;
+import com.mariaribeiro.nexo.identity.domain.model.User;
 import java.util.Optional;
+import org.springframework.dao.DataIntegrityViolationException;
 
-public class UserPersistenceAdapter implements LoadUserByEmailPort {
+public class UserPersistenceAdapter implements LoadUserByEmailPort, CreateUserPort {
 
     private final SpringDataUserRepository userRepository;
 
@@ -20,5 +24,19 @@ public class UserPersistenceAdapter implements LoadUserByEmailPort {
                         user.getEmail(),
                         user.getPasswordHash(),
                         user.getCreatedAt()));
+    }
+
+    @Override
+    public User create(User user) {
+        try {
+            UserJpaEntity savedUser = userRepository.saveAndFlush(UserJpaEntity.from(user));
+            return User.create(
+                    savedUser.getId(),
+                    savedUser.getEmail(),
+                    savedUser.getPasswordHash(),
+                    savedUser.getCreatedAt());
+        } catch (DataIntegrityViolationException exception) {
+            throw new DuplicateEmailException();
+        }
     }
 }

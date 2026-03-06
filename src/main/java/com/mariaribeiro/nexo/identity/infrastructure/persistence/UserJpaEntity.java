@@ -1,5 +1,6 @@
 package com.mariaribeiro.nexo.identity.infrastructure.persistence;
 
+import com.mariaribeiro.nexo.identity.domain.model.User;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
@@ -24,6 +25,21 @@ public class UserJpaEntity {
     private Instant createdAt;
 
     protected UserJpaEntity() {
+    }
+
+    public UserJpaEntity(UUID id, String email, String passwordHash, Instant createdAt) {
+        this.id = id;
+        this.email = email;
+        this.passwordHash = passwordHash;
+        this.createdAt = createdAt;
+    }
+
+    public static UserJpaEntity from(User user) {
+        return new UserJpaEntity(
+                user.id(),
+                user.email().value(),
+                user.passwordHash().value(),
+                user.createdAt());
     }
 
     public UUID getId() {

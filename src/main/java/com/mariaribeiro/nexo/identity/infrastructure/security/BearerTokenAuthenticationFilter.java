@@ -8,6 +8,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import org.springframework.http.MediaType;
+import org.springframework.http.HttpMethod;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 public class BearerTokenAuthenticationFilter extends OncePerRequestFilter {
@@ -25,8 +26,10 @@ public class BearerTokenAuthenticationFilter extends OncePerRequestFilter {
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
         String path = request.getRequestURI();
-        return path.equals("/health")
+        return HttpMethod.OPTIONS.matches(request.getMethod())
+                || path.equals("/health")
                 || path.equals("/auth/login")
+                || path.equals("/auth/signup")
                 || path.startsWith("/actuator");
     }
 

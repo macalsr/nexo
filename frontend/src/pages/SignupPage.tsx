@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
-import { login } from '../api/authApi'
+import { signup } from '../api/authApi'
 import { ApiError } from '../api/httpClient'
 import { hasAccessToken, storeAccessToken } from '../auth/tokenStorage'
 import { env } from '../config/env'
@@ -13,8 +13,9 @@ type FormValues = {
 type FieldErrors = Partial<Record<keyof FormValues, string>>
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+const minimumPasswordLength = 8
 
-export function LoginPage() {
+export function SignupPage() {
   const navigate = useNavigate()
   const location = useLocation()
   const [formValues, setFormValues] = useState<FormValues>({
@@ -42,6 +43,8 @@ export function LoginPage() {
 
     if (!values.password) {
       nextErrors.password = 'Password is required'
+    } else if (values.password.length < minimumPasswordLength) {
+      nextErrors.password = `Password must be at least ${minimumPasswordLength} characters`
     }
 
     return nextErrors
@@ -61,7 +64,7 @@ export function LoginPage() {
     setIsSubmitting(true)
 
     try {
-      const response = await login({
+      const response = await signup({
         email: formValues.email.trim(),
         password: formValues.password,
       })
@@ -69,11 +72,21 @@ export function LoginPage() {
       storeAccessToken(response.accessToken)
       navigate(redirectTo, { replace: true })
     } catch (error: unknown) {
-      if (error instanceof ApiError && error.status === 401) {
-        setErrorMessage('Invalid credentials')
-      } else {
-        setErrorMessage('Invalid credentials')
+      if (error instanceof ApiError) {
+        const validationErrors = readValidationErrors(error)
+
+        if (validationErrors) {
+          setFieldErrors(validationErrors)
+          return
+        }
+
+        if (error.status === 409) {
+          setErrorMessage('Unable to create account')
+          return
+        }
       }
+
+      setErrorMessage('Unable to create account')
     } finally {
       setIsSubmitting(false)
     }
@@ -82,11 +95,11 @@ export function LoginPage() {
   return (
     <main className="mobile-shell">
       <section className="hero-card">
-        <p className="eyebrow">Session access</p>
-        <h1>Nexo Finance</h1>
+        <p className="eyebrow">Account creation</p>
+        <h1>Create your Nexo account</h1>
         <p className="lead">
-          Sign in with your email and password to start an authenticated session
-          and continue to the application shell.
+          Register with your email and password to create an account and continue directly
+          to the authenticated application shell.
         </p>
 
         <form className="auth-form" onSubmit={handleSubmit} noValidate>
@@ -105,11 +118,11 @@ export function LoginPage() {
                 setErrorMessage(null)
               }}
               aria-invalid={fieldErrors.email ? 'true' : 'false'}
-              aria-describedby={fieldErrors.email ? 'email-error' : undefined}
+              aria-describedby={fieldErrors.email ? 'signup-email-error' : undefined}
             />
           </label>
           {fieldErrors.email ? (
-            <p className="field-error" id="email-error">
+            <p className="field-error" id="signup-email-error">
               {fieldErrors.email}
             </p>
           ) : null}
@@ -120,7 +133,7 @@ export function LoginPage() {
               className="field-input"
               type="password"
               name="password"
-              autoComplete="current-password"
+              autoComplete="new-password"
               value={formValues.password}
               onChange={(event) => {
                 const password = event.target.value
@@ -129,11 +142,11 @@ export function LoginPage() {
                 setErrorMessage(null)
               }}
               aria-invalid={fieldErrors.password ? 'true' : 'false'}
-              aria-describedby={fieldErrors.password ? 'password-error' : undefined}
+              aria-describedby={fieldErrors.password ? 'signup-password-error' : undefined}
             />
           </label>
           {fieldErrors.password ? (
-            <p className="field-error" id="password-error">
+            <p className="field-error" id="signup-password-error">
               {fieldErrors.password}
             </p>
           ) : null}
@@ -145,20 +158,24 @@ export function LoginPage() {
           ) : null}
 
           <button className="primary-action" type="submit" disabled={isSubmitting}>
-            {isSubmitting ? 'Signing in...' : 'Sign in'}
+            {isSubmitting ? 'Creating account...' : 'Create account'}
           </button>
         </form>
 
         <div className="actions stacked-actions">
-          <Link className="secondary-action" to="/signup">
-            Create a new account
+          <Link className="secondary-action" to="/login">
+            Already have an account? Sign in
           </Link>
         </div>
 
         <div className="stack compact-stack">
           <div className="info-tile">
             <span className="info-label">Route</span>
-            <strong>/login</strong>
+            <strong>/signup</strong>
+          </div>
+          <div className="info-tile">
+            <span className="info-label">Password rule</span>
+            <strong>Minimum {minimumPasswordLength} characters</strong>
           </div>
           <div className="info-tile">
             <span className="info-label">API base URL</span>
@@ -168,4 +185,28 @@ export function LoginPage() {
       </section>
     </main>
   )
+}
+
+function readValidationErrors(error: ApiError): FieldErrors | null {
+  if (error.status !== 400 || typeof error.details !== 'object' || error.details === null) {
+    return null
+  }
+
+  const details = error.details as { errors?: unknown }
+  if (typeof details.errors !== 'object' || details.errors === null) {
+    return null
+  }
+
+  const fieldErrors = details.errors as Record<string, unknown>
+  const nextErrors: FieldErrors = {}
+
+  if (typeof fieldErrors.email === 'string') {
+    nextErrors.email = fieldErrors.email
+  }
+
+  if (typeof fieldErrors.password === 'string') {
+    nextErrors.password = fieldErrors.password
+  }
+
+  return Object.keys(nextErrors).length > 0 ? nextErrors : null
 }

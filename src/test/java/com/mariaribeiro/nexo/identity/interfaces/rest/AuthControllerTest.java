@@ -10,8 +10,10 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.Statement;
 import java.time.Instant;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 import javax.sql.DataSource;
@@ -93,6 +95,57 @@ class AuthControllerTest {
         assertThat(responseBody).containsEntry("message", "Invalid credentials");
     }
 
+    @Test
+    void signupCreatesNormalizedUserAndReturnsAccessToken() throws Exception {
+        HttpResponse<String> response = sendSignup("Person@Example.com", "secret123");
+        Map<String, Object> responseBody = objectMapper.readValue(response.body(), Map.class);
+        Map<String, Object> storedUser = loadUserByEmail("person@example.com");
+
+        assertThat(response.statusCode()).isEqualTo(201);
+        assertThat(responseBody).containsKeys("accessToken", "expiresAt");
+        assertThat(tokenServicePort.verify((String) responseBody.get("accessToken")).email())
+                .isEqualTo("person@example.com");
+        assertThat(Instant.parse((String) responseBody.get("expiresAt")))
+                .isAfter(Instant.now().minusSeconds(1));
+        assertThat(storedUser).containsEntry("email", "person@example.com");
+        assertThat(storedUser.get("password_hash")).isInstanceOf(String.class);
+        assertThat(storedUser.get("password_hash")).isNotEqualTo("secret123");
+        assertThat(passwordEncoder.matches("secret123", (String) storedUser.get("password_hash"))).isTrue();
+        assertThat(storedUser.get("created_at")).isNotNull();
+    }
+
+    @Test
+    void signupReturnsConflictWhenEmailAlreadyExists() throws Exception {
+        insertUser("person@example.com", passwordEncoder.encode("secret123"));
+
+        HttpResponse<String> response = sendSignup("Person@Example.com", "secret123");
+        Map<String, Object> responseBody = objectMapper.readValue(response.body(), Map.class);
+
+        assertThat(response.statusCode()).isEqualTo(409);
+        assertThat(responseBody).containsEntry("message", "Unable to create account");
+    }
+
+    @Test
+    void signupReturnsFieldValidationErrorsForInvalidPayload() throws Exception {
+        HttpResponse<String> response = HttpClient.newHttpClient().send(
+                HttpRequest.newBuilder()
+                        .uri(URI.create("http://localhost:" + port + "/auth/signup"))
+                        .header("Content-Type", MediaType.APPLICATION_JSON_VALUE)
+                        .POST(HttpRequest.BodyPublishers.ofString("""
+                                {"email":"invalid-email","password":"short"}
+                                """))
+                        .build(),
+                HttpResponse.BodyHandlers.ofString());
+
+        Map<String, Object> responseBody = objectMapper.readValue(response.body(), Map.class);
+        Map<String, Object> errors = (Map<String, Object>) responseBody.get("errors");
+
+        assertThat(response.statusCode()).isEqualTo(400);
+        assertThat(responseBody).containsEntry("message", "Validation failed");
+        assertThat(errors).containsEntry("email", "Enter a valid email address");
+        assertThat(errors).containsEntry("password", "Password must be at least 8 characters");
+    }
+
     private HttpResponse<String> sendLogin(String email, String password) throws Exception {
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create("http://localhost:" + port + "/auth/login"))
@@ -102,6 +155,35 @@ class AuthControllerTest {
                 .build();
 
         return HttpClient.newHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
+    }
+
+    private HttpResponse<String> sendSignup(String email, String password) throws Exception {
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create("http://localhost:" + port + "/auth/signup"))
+                .header("Content-Type", MediaType.APPLICATION_JSON_VALUE)
+                .POST(HttpRequest.BodyPublishers.ofString(
+                        objectMapper.writeValueAsString(Map.of("email", email, "password", password))))
+                .build();
+
+        return HttpClient.newHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
+    }
+
+    private Map<String, Object> loadUserByEmail(String email) throws Exception {
+        try (Connection connection = dataSource.getConnection();
+             PreparedStatement statement = connection.prepareStatement(
+                     "SELECT id, email, password_hash, created_at FROM users WHERE email = ?")) {
+            statement.setString(1, email);
+
+            try (ResultSet resultSet = statement.executeQuery()) {
+                assertThat(resultSet.next()).isTrue();
+                Map<String, Object> user = new HashMap<>();
+                user.put("id", resultSet.getObject("id"));
+                user.put("email", resultSet.getString("email"));
+                user.put("password_hash", resultSet.getString("password_hash"));
+                user.put("created_at", resultSet.getTimestamp("created_at"));
+                return user;
+            }
+        }
     }
 
     private void insertUser(String email, String passwordHash) throws Exception {

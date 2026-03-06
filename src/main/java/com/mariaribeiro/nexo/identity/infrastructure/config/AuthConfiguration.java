@@ -1,15 +1,20 @@
 package com.mariaribeiro.nexo.identity.infrastructure.config;
 
+import com.mariaribeiro.nexo.identity.application.port.CreateUserPort;
 import com.mariaribeiro.nexo.identity.application.port.LoadUserByEmailPort;
+import com.mariaribeiro.nexo.identity.application.port.PasswordHashEncoderPort;
 import com.mariaribeiro.nexo.identity.application.port.PasswordHashVerifierPort;
 import com.mariaribeiro.nexo.identity.application.port.TokenServicePort;
 import com.mariaribeiro.nexo.identity.application.usecase.LoginService;
 import com.mariaribeiro.nexo.identity.application.usecase.LoginUseCase;
+import com.mariaribeiro.nexo.identity.application.usecase.SignupService;
+import com.mariaribeiro.nexo.identity.application.usecase.SignupUseCase;
 import com.mariaribeiro.nexo.identity.infrastructure.persistence.SpringDataUserRepository;
 import com.mariaribeiro.nexo.identity.infrastructure.persistence.UserPersistenceAdapter;
 import com.mariaribeiro.nexo.identity.infrastructure.security.AuthenticationRequestContext;
 import com.mariaribeiro.nexo.identity.infrastructure.security.AuthTokenProperties;
 import com.mariaribeiro.nexo.identity.infrastructure.security.BearerTokenAuthenticationFilter;
+import com.mariaribeiro.nexo.identity.infrastructure.security.BcryptPasswordHashEncoder;
 import com.mariaribeiro.nexo.identity.infrastructure.security.BcryptPasswordHashVerifier;
 import com.mariaribeiro.nexo.identity.infrastructure.security.JwtTokenService;
 import java.time.Clock;
@@ -35,8 +40,23 @@ public class AuthConfiguration {
     }
 
     @Bean
-    LoadUserByEmailPort loadUserByEmailPort(SpringDataUserRepository userRepository) {
+    UserPersistenceAdapter userPersistenceAdapter(SpringDataUserRepository userRepository) {
         return new UserPersistenceAdapter(userRepository);
+    }
+
+    @Bean
+    LoadUserByEmailPort loadUserByEmailPort(UserPersistenceAdapter userPersistenceAdapter) {
+        return userPersistenceAdapter;
+    }
+
+    @Bean
+    CreateUserPort createUserPort(UserPersistenceAdapter userPersistenceAdapter) {
+        return userPersistenceAdapter;
+    }
+
+    @Bean
+    PasswordHashEncoderPort passwordHashEncoderPort(PasswordEncoder passwordEncoder) {
+        return new BcryptPasswordHashEncoder(passwordEncoder);
     }
 
     @Bean
@@ -71,5 +91,14 @@ public class AuthConfiguration {
             PasswordHashVerifierPort passwordHashVerifierPort,
             TokenServicePort tokenServicePort) {
         return new LoginService(loadUserByEmailPort, passwordHashVerifierPort, tokenServicePort);
+    }
+
+    @Bean
+    SignupUseCase signupUseCase(
+            CreateUserPort createUserPort,
+            PasswordHashEncoderPort passwordHashEncoderPort,
+            TokenServicePort tokenServicePort,
+            Clock authClock) {
+        return new SignupService(createUserPort, passwordHashEncoderPort, tokenServicePort, authClock);
     }
 }
