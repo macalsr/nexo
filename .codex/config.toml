@@ -1,0 +1,3 @@
+profile = "feature-work"
+model = "gpt-5.4"
+approval_policy = "on-request"

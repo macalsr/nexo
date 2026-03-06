@@ -35,4 +35,18 @@ class HealthControllerTest {
         assertThat(responseBody).containsEntry("service", "nexo-api");
         assertThat(responseBody.get("timestamp")).isNotNull();
     }
+
+    @Test
+    void healthAllowsFrontendOriginForBrowserRequests() throws Exception {
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create("http://localhost:" + port + "/health"))
+                .header("Origin", "http://localhost:5173")
+                .GET()
+                .build();
+        HttpResponse<String> response = HttpClient.newHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
+
+        assertThat(response.statusCode()).isEqualTo(200);
+        assertThat(response.headers().firstValue("access-control-allow-origin"))
+                .contains("http://localhost:5173");
+    }
 }

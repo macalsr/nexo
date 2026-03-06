@@ -51,6 +51,7 @@ src/main/resources
 +-- application.properties
 +-- application-local.properties
 +-- db/migration/V1__create_app_metadata.sql
++-- db/migration/V2__create_users_table.sql
 ```
 ## 4. Local Development
 ### 4.1 Backend prerequisites
@@ -84,6 +85,9 @@ File: `src/main/resources/application-local.properties`
 - `DB_NAME` (default `nexo`)
 - `DB_USER` (default `nexo`)
 - `DB_PASSWORD` (default `nexo`)
+- `APP_WEB_CORS_ALLOWED_ORIGINS` (default `http://localhost:5173`)
+- `APP_AUTH_JWT_SECRET` (default local development secret in `application.properties`)
+- `APP_AUTH_JWT_ACCESS_TOKEN_TTL` (default `PT24H`)
 
 ### 5.2 Test profile
 File: `src/test/resources/application.properties`
@@ -113,13 +117,54 @@ Example:
 curl -i http://localhost:8080/health
 ```
 
-## 8. Frontend Routes
+### 7.2 Login
+- Method: `POST`
+- Path: `/auth/login`
+- Public endpoint
+- Request body:
+  - `email`
+  - `password`
+- Success response: `200 OK` JSON
+  - `accessToken`
+  - `expiresAt`
+- Failure response: `401 Unauthorized` JSON
+  - `message`: `Invalid credentials`
+
+Token policy:
+- Access tokens are signed JWTs.
+- Default expiration is `24 hours` (`PT24H`).
+- Expired tokens are rejected by the token validation service.
+
+Example:
+```bash
+curl -i -X POST http://localhost:8080/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"person@example.com","password":"secret123"}'
+```
+
+## 8. Authentication Persistence Foundation
+- Table: `users`
+- Columns:
+  - `id` (`UUID`, primary key)
+  - `email` (`VARCHAR(320)`, required, unique)
+  - `password_hash` (`VARCHAR(255)`, required)
+  - `created_at` (`TIMESTAMP`, required, defaults to current timestamp)
+
+Email normalization strategy:
+- Emails are normalized to trimmed lowercase before entering the domain model.
+- Database storage is enforced as lowercase with `CHECK (email = LOWER(email))`.
+- Uniqueness is enforced on the normalized stored value through a unique index on `email`.
+
+Why this matters:
+- This removes ambiguity around case sensitivity and keeps authentication persistence compatible with future shared-account ownership.
+
+## 9. Frontend Routes
 - `/login`: login placeholder screen
 - `/app`: app placeholder screen
 
 Both routes exist to validate navigation structure before auth and final UI implementation.
 
-## 9. PWA Installability
+## 10. PWA Installability
 Implemented foundation:
 - `manifest.webmanifest` with app metadata and icons
 - service worker (`public/sw.js`) registration in `src/main.tsx`
@@ -130,40 +175,67 @@ Validation checklist:
 - Browser detects manifest/service worker
 - "Add to Home Screen" appears on supported mobile browsers
 
-## 10. Testing and Build
-### 10.1 Backend tests
+## 11. Testing and Build
+### 11.1 Backend tests
 ```bash
 ./mvnw -q test
 ```
 
-### 10.2 Frontend build
+### 11.2 Frontend build
 ```bash
 cd frontend
 npm run build
 ```
 
-## 11. CI
+## 12. CI
 Workflow file:
 - `.github/workflows/ci.yml`
 
 Current CI validates backend tests with PostgreSQL + Flyway migrations.
 
-## 12. Quality and Contribution Rules
+## 13. Quality and Contribution Rules
 This repository enforces agent rules in `AGENTS.md`.
 
 Mandatory documentation rule:
 - Every feature must update `README.md` in the same PR.
 - Feature work is incomplete if README documentation is not updated.
 
-## 13. Feature Changelog (Portfolio)
+## 14. Feature Changelog (Portfolio)
 > This section must be updated for every feature.
+
+### 2026-03-06 - User Persistence Foundation (FOUNDATION)
+- Added a `users` table migration with `email`, `password_hash`, `created_at`, and UUID primary key.
+- Enforced lowercase email storage with a database check and unique index on the normalized stored value.
+- Added domain `User`, `EmailAddress`, and `PasswordHash` models to make the normalization and hashed-password contract explicit in code.
+- Added tests covering migration creation, duplicate-email rejection, and lowercase email enforcement.
+- Why it matters: establishes the minimum durable identity model needed for authentication and future shared-account ownership.
+
+### 2026-03-06 - Login Endpoint MVP (FOUNDATION)
+- Added `POST /auth/login` to validate credentials and return a signed access token with expiration metadata.
+- Implemented BCrypt password verification, a JPA-backed user lookup adapter, and JWT token issuance/validation infrastructure.
+- Standardized login failures to `401` with the generic message `Invalid credentials`.
+- Defined a default access-token expiration policy of `24 hours`.
+- Why it matters: provides the first secure session-start mechanism needed before protecting finance features behind authentication.
 
 ### 2026-03-05 - Frontend PWA Foundation (FOUNDATION)
 - Created `frontend/` app with React + TypeScript + Vite.
-- Added placeholder routes for `/login` and `/app`.
-- Added environment-based API URL through `VITE_API_BASE_URL`.
-- Added installable PWA base with manifest, icons, and service worker registration.
-- Why it matters: validates mobile-first runtime assumptions and prevents rework before auth/UI epics.
+- Added placeholder routes for `/login` and `/app` with a mobile-first shell.
+- Added environment-based API URL through `VITE_API_BASE_URL`, surfaced in placeholder pages for runtime verification.
+- Added installable PWA base with manifest, icons, service worker registration, and mobile web-app metadata.
+- Why it matters: validates mobile-first runtime assumptions and installability early, preventing rework before auth and dashboard epics.
+
+### 2026-03-06 - Frontend Foundation Validation Pass (FOUNDATION)
+- Replaced the Vite starter screen with route-based placeholders for `/login` and `/app`.
+- Added explicit `src/config/env.ts` handling for `VITE_API_BASE_URL` with a local default of `http://localhost:8080`.
+- Kept the frontend installable through the existing manifest and service worker while tightening mobile metadata in `index.html`.
+- Why it matters: moves the frontend from scaffold state to a usable mobile-first foundation that can be validated locally in a browser and on mobile devices.
+
+### 2026-03-06 - Centralized Frontend HTTP Client (FOUNDATION)
+- Added a reusable HTTP client layer in `frontend/src/api/httpClient.ts` as the single entry point for backend requests.
+- Standardized error handling through an `ApiError` type and shared request pipeline.
+- Added `frontend/src/api/healthApi.ts` so feature modules call small API wrappers instead of raw HTTP primitives.
+- Prepared the client for future token injection by isolating request header construction in one place.
+- Why it matters: prevents scattered networking logic and makes future authentication changes additive instead of invasive.
 
 ### 2026-03-05 - Setup Spring Boot + Docker + Flyway (FOUNDATION)
 - Added `local` runtime config with PostgreSQL + automatic Flyway migration.
@@ -178,12 +250,18 @@ Mandatory documentation rule:
 - Endpoint remains public (no authentication requirement).
 - Why it matters: improves fast runtime validation for development and future hosting checks.
 
+### 2026-03-06 - Local Frontend CORS Support (FOUNDATION)
+- Added backend CORS configuration so the local frontend origin can call API endpoints from the browser.
+- Introduced `APP_WEB_CORS_ALLOWED_ORIGINS` for environment-driven origin control, defaulting to `http://localhost:5173`.
+- Added a backend test that verifies `GET /health` responds with the expected CORS header for the frontend origin.
+- Why it matters: allows the mobile-first frontend to call the backend directly during local development without browser cross-origin failures.
+
 ### 2026-03-05 - README Documentation Standard
 - Created a structured, documentation-first README.
 - Added clear operational sections (setup, run, tests, API contract, configuration).
 - Why it matters: improves technical communication and makes the project reviewable for portfolio and hiring contexts.
 
-## 14. Feature Entry Template
+## 15. Feature Entry Template
 Use this template in future PRs:
 
 ```md

@@ -1,42 +1,103 @@
-#root {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
+.mobile-shell {
+  min-height: 100vh;
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+  padding: 1rem;
 }
 
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: filter 300ms;
-}
-.logo:hover {
-  filter: drop-shadow(0 0 2em #646cffaa);
-}
-.logo.react:hover {
-  filter: drop-shadow(0 0 2em #61dafbaa);
+.hero-card {
+  width: min(100%, 28rem);
+  margin: auto;
+  padding: 1.5rem;
+  border-radius: 1.5rem;
+  background: rgba(9, 20, 35, 0.9);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.25);
 }
 
-@keyframes logo-spin {
-  from {
-    transform: rotate(0deg);
+.eyebrow {
+  margin: 0 0 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #7dd3fc;
+}
+
+.hero-card h1 {
+  margin: 0;
+  font-size: clamp(2rem, 8vw, 3rem);
+  line-height: 1;
+}
+
+.lead {
+  margin: 1rem 0 0;
+  color: #dbe4f0;
+  font-size: 0.98rem;
+}
+
+.stack {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+}
+
+.info-tile {
+  display: grid;
+  gap: 0.25rem;
+  padding: 0.9rem 1rem;
+  border-radius: 1rem;
+  background: rgba(15, 23, 42, 0.55);
+}
+
+.info-label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #94a3b8;
+}
+
+.info-tile strong {
+  font-size: 0.95rem;
+  overflow-wrap: anywhere;
+}
+
+.actions {
+  display: flex;
+  margin-top: 1.5rem;
+}
+
+.primary-action,
+.secondary-action {
+  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 3rem;
+  padding: 0.85rem 1rem;
+  border-radius: 999px;
+  font-weight: 700;
+}
+
+.primary-action {
+  background: linear-gradient(135deg, #38bdf8, #22c55e);
+  color: #08111f;
+}
+
+.secondary-action {
+  background: rgba(59, 130, 246, 0.16);
+  color: #e2e8f0;
+  border: 1px solid rgba(125, 211, 252, 0.18);
+}
+
+@media (min-width: 768px) {
+  .mobile-shell {
+    padding: 2rem;
   }
-  to {
-    transform: rotate(360deg);
+
+  .hero-card {
+    width: min(100%, 34rem);
+    padding: 2rem;
   }
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  a:nth-of-type(2) .logo {
-    animation: logo-spin infinite 20s linear;
-  }
-}
-
-.card {
-  padding: 2em;
-}
-
-.read-the-docs {
-  color: #888;
 }

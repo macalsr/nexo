@@ -7,7 +7,7 @@ import App from './App'
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js').catch(() => {
-      // Service worker registration is best-effort for local development.
+      // Service worker registration is best-effort in development.
     })
   })
 }
