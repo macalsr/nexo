@@ -9,6 +9,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -55,5 +56,27 @@ public class AuthExceptionHandler {
 
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(new AuthValidationErrorResponse("Validation failed", errors));
+    }
+
+    @ExceptionHandler(MissingServletRequestParameterException.class)
+    public ResponseEntity<AuthValidationErrorResponse> handleMissingRequestParameter(
+            MissingServletRequestParameterException exception) {
+        Map<String, String> errors = new LinkedHashMap<>();
+        errors.put(exception.getParameterName(), missingParameterMessage(exception.getParameterName()));
+
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(new AuthValidationErrorResponse("Validation failed", errors));
+    }
+
+    private String missingParameterMessage(String parameterName) {
+        if ("token".equals(parameterName)) {
+            return "Verification token is required";
+        }
+
+        if (parameterName == null || parameterName.isBlank()) {
+            return "Field is required";
+        }
+
+        return Character.toUpperCase(parameterName.charAt(0)) + parameterName.substring(1) + " is required";
     }
 }

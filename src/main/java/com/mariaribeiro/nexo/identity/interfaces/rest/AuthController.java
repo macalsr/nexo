@@ -13,11 +13,13 @@ import com.mariaribeiro.nexo.identity.application.usecase.SignupUseCase;
 import com.mariaribeiro.nexo.identity.application.usecase.VerifyEmailCommand;
 import com.mariaribeiro.nexo.identity.application.usecase.VerifyEmailUseCase;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -70,8 +72,8 @@ public class AuthController {
     }
 
     @PostMapping("/verify-email")
-    public ResponseEntity<Void> verifyEmail(@Valid @RequestBody VerifyEmailRequest request) {
-        verifyEmailUseCase.verify(new VerifyEmailCommand(request.token()));
+    public ResponseEntity<Void> verifyEmail(@RequestParam("token") @NotBlank(message = "Verification token is required") String token) {
+        verifyEmailUseCase.verify(new VerifyEmailCommand(token));
         return ResponseEntity.noContent().build();
     }
 }

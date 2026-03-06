@@ -185,9 +185,9 @@ curl -i -X POST http://localhost:8080/auth/signup \
 
 #### 7.4.1 Verify Email
 - Method: `POST`
-- Path: `/auth/verify-email`
+- Path: `/auth/verify-email?token=...`
 - Public endpoint
-- Request body:
+- Query parameter:
   - `token`
 - Success response: `204 No Content`
 - Failure response: `400 Bad Request`
@@ -503,7 +503,7 @@ Mandatory documentation rule:
 
 ### 2026-03-06 - Email Verification Flow (FOUNDATION)
 - Added durable email-verification state on users plus a dedicated `email_verification_tokens` table with expiration metadata.
-- Added `POST /auth/verify-email` for single-use token consumption and `POST /auth/resend-verification` for authenticated resend requests.
+- Added `POST /auth/verify-email?token=...` for single-use token consumption and `POST /auth/resend-verification` for authenticated resend requests.
 - Kept the MVP policy lightweight: unverified users can still log in, while `/app` now reflects verification state and exposes a resend action.
 - Extended `GET /me` to return `emailVerified`, enabling the frontend to reflect account state without extra bespoke endpoints.
 - Stubbed verification delivery behind a port so the flow remains easy to swap to a real provider later.

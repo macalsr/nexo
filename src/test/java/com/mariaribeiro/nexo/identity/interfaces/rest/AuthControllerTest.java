@@ -391,10 +391,8 @@ class AuthControllerTest {
 
     private HttpResponse<String> sendVerifyEmail(String token) throws Exception {
         HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create("http://localhost:" + port + "/auth/verify-email"))
-                .header("Content-Type", MediaType.APPLICATION_JSON_VALUE)
-                .POST(HttpRequest.BodyPublishers.ofString(
-                        objectMapper.writeValueAsString(Map.of("token", token))))
+                .uri(URI.create("http://localhost:" + port + "/auth/verify-email?token=" + token))
+                .POST(HttpRequest.BodyPublishers.noBody())
                 .build();
 
         return HttpClient.newHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
