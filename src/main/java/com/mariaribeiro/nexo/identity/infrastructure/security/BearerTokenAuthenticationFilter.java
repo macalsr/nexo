@@ -31,6 +31,8 @@ public class BearerTokenAuthenticationFilter extends OncePerRequestFilter {
                 || path.equals("/auth/login")
                 || path.equals("/auth/signup")
                 || path.equals("/auth/forgot-password")
+                || path.equals("/auth/reset-password")
+                || path.equals("/auth/verify-email")
                 || path.startsWith("/actuator");
     }
 

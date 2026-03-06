@@ -4,7 +4,13 @@ import java.time.Instant;
 import java.util.Objects;
 import java.util.UUID;
 
-public record User(UUID id, EmailAddress email, PasswordHash passwordHash, Instant createdAt) {
+public record User(
+        UUID id,
+        EmailAddress email,
+        PasswordHash passwordHash,
+        boolean emailVerified,
+        Instant emailVerifiedAt,
+        Instant createdAt) {
 
     public User {
         Objects.requireNonNull(id, "id must not be null");
@@ -14,6 +20,22 @@ public record User(UUID id, EmailAddress email, PasswordHash passwordHash, Insta
     }
 
     public static User create(UUID id, String email, String passwordHash, Instant createdAt) {
-        return new User(id, EmailAddress.of(email), PasswordHash.of(passwordHash), createdAt);
+        return new User(id, EmailAddress.of(email), PasswordHash.of(passwordHash), false, null, createdAt);
+    }
+
+    public static User restore(
+            UUID id,
+            String email,
+            String passwordHash,
+            boolean emailVerified,
+            Instant emailVerifiedAt,
+            Instant createdAt) {
+        return new User(
+                id,
+                EmailAddress.of(email),
+                PasswordHash.of(passwordHash),
+                emailVerified,
+                emailVerifiedAt,
+                createdAt);
     }
 }

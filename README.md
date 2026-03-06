@@ -89,6 +89,7 @@ File: `src/main/resources/application-local.properties`
 - `APP_AUTH_JWT_SECRET` (default local development secret in `application.properties`)
 - `APP_AUTH_JWT_ACCESS_TOKEN_TTL` (default `PT24H`)
 - `APP_AUTH_PASSWORD_RESET_TOKEN_TTL` (default `PT15M`)
+- `APP_AUTH_EMAIL_VERIFICATION_TOKEN_TTL` (default `PT24H`)
 
 ### 5.2 Test profile
 File: `src/test/resources/application.properties`
@@ -162,6 +163,9 @@ curl -i -X POST http://localhost:8080/auth/login \
 - Failure responses:
   - `400 Bad Request` with `message` and field-level `errors`
   - `409 Conflict` with the generic message `Unable to create account` when the normalized email already exists
+- Side effects:
+  - creates the account as email-unverified
+  - issues an email verification token and sends it through the current delivery stub
 
 Example:
 ```bash
@@ -170,7 +174,43 @@ curl -i -X POST http://localhost:8080/auth/signup \
   -d '{"email":"person@example.com","password":"secret123"}'
 ```
 
-### 7.4 Forgot Password Request
+### 7.4 Email Verification
+- Verification state:
+  - stored on the user record as `email_verified`
+  - exposed to the frontend through `GET /me`
+- MVP policy:
+  - unverified users may still log in and enter `/app`
+  - the app shell must show verification state and expose a resend action
+  - future higher-risk features can gate on `emailVerified` when needed
+
+#### 7.4.1 Verify Email
+- Method: `POST`
+- Path: `/auth/verify-email`
+- Public endpoint
+- Request body:
+  - `token`
+- Success response: `204 No Content`
+- Failure response: `400 Bad Request`
+  - `message`: `Invalid verification token`
+- Behavior:
+  - token must exist and not be expired
+  - successful verification marks the user as verified and invalidates the token
+  - the token is single-use
+
+#### 7.4.2 Resend Verification Email
+- Method: `POST`
+- Path: `/auth/resend-verification`
+- Protected endpoint
+- Requires `Authorization: Bearer <access-token>`
+- Success response: `202 Accepted`
+  - `message`: `Check your email`
+- Behavior:
+  - returns the same generic response
+  - if the user is already verified, the endpoint remains safely idempotent
+  - issuing a new verification token replaces prior outstanding verification tokens for that user
+  - delivery is currently stubbed
+
+### 7.5 Forgot Password Request
 - Method: `POST`
 - Path: `/auth/forgot-password`
 - Public endpoint
@@ -196,7 +236,35 @@ curl -i -X POST http://localhost:8080/auth/forgot-password \
   -d '{"email":"person@example.com"}'
 ```
 
-### 7.5 Authenticated Identity
+### 7.6 Reset Password Completion
+- Method: `POST`
+- Path: `/auth/reset-password`
+- Public endpoint
+- Request body:
+  - `token`
+  - `newPassword`
+- Validation:
+  - `token` must be present
+  - `newPassword` must be present and at least `8` characters
+- Success response: `204 No Content`
+- Security behavior:
+  - accepts only valid, non-expired reset tokens
+  - updates the stored password hash, never the raw password
+  - invalidates the reset token on success so it cannot be reused
+  - returns the same generic `400 Bad Request` message for invalid and expired tokens
+- Session revocation:
+  - existing JWT access tokens are not revoked by this endpoint in the current architecture
+  - the current auth model is stateless JWT without a server-side session store or token versioning
+  - recommended follow-up is token versioning or a revocation store if immediate session invalidation becomes a requirement
+
+Example:
+```bash
+curl -i -X POST http://localhost:8080/auth/reset-password \
+  -H "Content-Type: application/json" \
+  -d '{"token":"reset-token-value","newPassword":"secret1234"}'
+```
+
+### 7.7 Authenticated Identity
 - Method: `GET`
 - Path: `/me`
 - Protected endpoint
@@ -204,13 +272,16 @@ curl -i -X POST http://localhost:8080/auth/forgot-password \
 - Success response: `200 OK` JSON
   - `userId`
   - `email`
+  - `emailVerified`
 - Failure response: `401 Unauthorized` JSON
   - `message`: `Unauthorized`
 
 Authentication enforcement:
 - `/health` remains public.
 - `/auth/login` remains public.
+- `/auth/verify-email` remains public.
 - `/auth/forgot-password` remains public.
+- `/auth/reset-password` remains public.
 - Protected routes reject missing, invalid, and expired tokens with the same generic `401` response.
 - Browser CORS preflight requests (`OPTIONS`) for protected routes are allowed without authentication so authenticated frontend calls can complete.
 - Valid tokens attach authenticated user identity to the request context for downstream use.
@@ -221,8 +292,17 @@ Authentication enforcement:
   - `id` (`UUID`, primary key)
   - `email` (`VARCHAR(320)`, required, unique)
   - `password_hash` (`VARCHAR(255)`, required)
+  - `email_verified` (`BOOLEAN`, required, defaults to `FALSE`)
+  - `email_verified_at` (`TIMESTAMP`, optional)
   - `created_at` (`TIMESTAMP`, required, defaults to current timestamp)
 - Table: `password_reset_tokens`
+- Columns:
+  - `id` (`UUID`, primary key)
+  - `user_id` (`UUID`, required, foreign key to `users.id`)
+  - `token` (`VARCHAR(128)`, required, unique)
+  - `expires_at` (`TIMESTAMP`, required)
+  - `created_at` (`TIMESTAMP`, required)
+- Table: `email_verification_tokens`
 - Columns:
   - `id` (`UUID`, primary key)
   - `user_id` (`UUID`, required, foreign key to `users.id`)
@@ -240,6 +320,7 @@ Why this matters:
 
 ## 9. Frontend Routes
 - `/login`: email/password login page with client-side validation and generic auth failure handling
+- `/verify-email`: verification-link landing page that consumes an email verification token
 - `/forgot-password`: email-only password reset request page with generic success feedback
 - `/signup`: email/password signup page with client-side validation and immediate authenticated access on success
 - `/app`: post-login app shell route, guarded by centralized session validation
@@ -250,8 +331,13 @@ MVP auth flow:
 - Login submits to `POST /auth/login`
 - On success, the frontend stores `accessToken` in browser `localStorage` under `nexo.accessToken`
 - The app redirects to `/app`
+- Signup also triggers email-verification issuance through the backend stubbed delivery flow
+- `/verify-email` submits the link token to `POST /auth/verify-email`
+- `/app` reads `emailVerified` from `GET /me` and offers `Resend verification email` when needed
 - Forgot-password submits to `POST /auth/forgot-password`
 - On accepted forgot-password requests, the frontend always shows `Check your email`
+- Reset-password submits the reset token plus a new password to `POST /auth/reset-password`
+- Successful reset invalidates the token and allows subsequent login with the new password
 - `/login` and `/signup` stay accessible even if a stale token exists in local storage; session validity is decided only by the protected route guard.
 - `/app` exposes an explicit logout action that clears the stored token and returns the user to `/login`.
 - Visiting `/app` without a token redirects immediately to `/login`
@@ -406,6 +492,23 @@ Mandatory documentation rule:
 - Stubbed delivery behind a backend port so the request flow is complete without integrating a real email provider yet.
 - Added backend and frontend automated tests covering token creation, generic responses, validation, and the new UI entry point.
 - Why it matters: establishes the first secure password-recovery request path without leaking account existence, while keeping the delivery mechanism swappable for future production integration.
+
+### 2026-03-06 - Reset Password Completion Flow (FOUNDATION)
+- Added `POST /auth/reset-password` to accept a reset token plus a new password, validate token existence and expiration, update the stored password hash, and invalidate the token after successful use.
+- Reused the existing password hashing port and password reset token persistence flow instead of introducing parallel auth logic.
+- Standardized invalid and expired reset-token failures to the same generic `400` response to avoid leaking token state details.
+- Verified that users can authenticate with the new password after reset and that reused tokens are rejected.
+- Documented the current limitation that existing JWT sessions are not revoked immediately because the architecture is stateless and has no token revocation store yet.
+- Why it matters: completes the secure password-recovery path end to end while keeping the current auth architecture honest about what it can and cannot revoke.
+
+### 2026-03-06 - Email Verification Flow (FOUNDATION)
+- Added durable email-verification state on users plus a dedicated `email_verification_tokens` table with expiration metadata.
+- Added `POST /auth/verify-email` for single-use token consumption and `POST /auth/resend-verification` for authenticated resend requests.
+- Kept the MVP policy lightweight: unverified users can still log in, while `/app` now reflects verification state and exposes a resend action.
+- Extended `GET /me` to return `emailVerified`, enabling the frontend to reflect account state without extra bespoke endpoints.
+- Stubbed verification delivery behind a port so the flow remains easy to swap to a real provider later.
+- Added backend and frontend automated tests covering verification, resend, state reflection, and token consumption.
+- Why it matters: improves account integrity and recovery readiness without overcomplicating a still-MVP authentication architecture.
 
 ### 2026-03-05 - README Documentation Standard
 - Created a structured, documentation-first README.

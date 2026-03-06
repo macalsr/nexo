@@ -32,6 +32,8 @@ class LoginServiceTest {
                 userId,
                 "person@example.com",
                 "$2a$10$abcdefghijklmnopqrstuv",
+                false,
+                null,
                 createdAt);
 
         when(loadUserByEmailPort.findByEmail("person@example.com")).thenReturn(Optional.of(user));
@@ -61,6 +63,8 @@ class LoginServiceTest {
                 userId,
                 "person@example.com",
                 "$2a$10$abcdefghijklmnopqrstuv",
+                false,
+                null,
                 Instant.parse("2026-03-06T12:00:00Z"));
 
         when(loadUserByEmailPort.findByEmail("person@example.com")).thenReturn(Optional.of(user));

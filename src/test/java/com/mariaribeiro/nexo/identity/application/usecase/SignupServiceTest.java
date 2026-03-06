@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.mariaribeiro.nexo.identity.application.port.CreateUserPort;
@@ -21,11 +22,13 @@ class SignupServiceTest {
     private final CreateUserPort createUserPort = mock(CreateUserPort.class);
     private final PasswordHashEncoderPort passwordHashEncoderPort = mock(PasswordHashEncoderPort.class);
     private final TokenServicePort tokenServicePort = mock(TokenServicePort.class);
+    private final IssueEmailVerificationUseCase issueEmailVerificationUseCase = mock(IssueEmailVerificationUseCase.class);
     private final Clock clock = Clock.fixed(Instant.parse("2026-03-06T12:00:00Z"), ZoneOffset.UTC);
     private final SignupService signupService = new SignupService(
             createUserPort,
             passwordHashEncoderPort,
             tokenServicePort,
+            issueEmailVerificationUseCase,
             clock);
 
     @Test
@@ -40,6 +43,7 @@ class SignupServiceTest {
 
         assertThat(result.accessToken()).isEqualTo("token-value");
         assertThat(result.expiresAt()).isEqualTo(expiresAt);
+        verify(issueEmailVerificationUseCase).issueVerificationFor(any(AuthenticatedUserView.class));
     }
 
     @Test

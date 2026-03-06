@@ -52,6 +52,7 @@ class AuthenticatedUserControllerTest {
     void cleanUsers() throws Exception {
         try (Connection connection = dataSource.getConnection();
              Statement statement = connection.createStatement()) {
+            statement.executeUpdate("DELETE FROM email_verification_tokens");
             statement.executeUpdate("DELETE FROM users");
         }
     }
@@ -116,7 +117,56 @@ class AuthenticatedUserControllerTest {
 
         assertThat(response.statusCode()).isEqualTo(200);
         assertThat(responseBody).containsEntry("email", "person@example.com");
+        assertThat(responseBody).containsEntry("emailVerified", false);
         assertThat(responseBody.get("userId")).isNotNull();
+    }
+
+    @Test
+    void meReturnsEmailVerifiedStateWhenUserIsVerified() throws Exception {
+        insertVerifiedUser("person@example.com", passwordEncoder.encode("secret123"));
+        HttpResponse<String> loginResponse = HttpClient.newHttpClient().send(
+                HttpRequest.newBuilder()
+                        .uri(URI.create("http://localhost:" + port + "/auth/login"))
+                        .header("Content-Type", MediaType.APPLICATION_JSON_VALUE)
+                        .POST(HttpRequest.BodyPublishers.ofString("""
+                                {"email":"person@example.com","password":"secret123"}
+                                """))
+                        .build(),
+                HttpResponse.BodyHandlers.ofString());
+        String accessToken = (String) objectMapper.readValue(loginResponse.body(), Map.class).get("accessToken");
+
+        HttpResponse<String> response = sendProtectedRequest("Bearer " + accessToken);
+        Map<String, Object> responseBody = objectMapper.readValue(response.body(), Map.class);
+
+        assertThat(response.statusCode()).isEqualTo(200);
+        assertThat(responseBody).containsEntry("emailVerified", true);
+    }
+
+    @Test
+    void resendVerificationReturnsGenericAcceptedResponseForAuthenticatedUser() throws Exception {
+        insertUser("person@example.com", passwordEncoder.encode("secret123"));
+        HttpResponse<String> loginResponse = HttpClient.newHttpClient().send(
+                HttpRequest.newBuilder()
+                        .uri(URI.create("http://localhost:" + port + "/auth/login"))
+                        .header("Content-Type", MediaType.APPLICATION_JSON_VALUE)
+                        .POST(HttpRequest.BodyPublishers.ofString("""
+                                {"email":"person@example.com","password":"secret123"}
+                                """))
+                        .build(),
+                HttpResponse.BodyHandlers.ofString());
+        String accessToken = (String) objectMapper.readValue(loginResponse.body(), Map.class).get("accessToken");
+
+        HttpResponse<String> response = HttpClient.newHttpClient().send(
+                HttpRequest.newBuilder()
+                        .uri(URI.create("http://localhost:" + port + "/auth/resend-verification"))
+                        .header("Authorization", "Bearer " + accessToken)
+                        .POST(HttpRequest.BodyPublishers.noBody())
+                        .build(),
+                HttpResponse.BodyHandlers.ofString());
+        Map<String, Object> responseBody = objectMapper.readValue(response.body(), Map.class);
+
+        assertThat(response.statusCode()).isEqualTo(202);
+        assertThat(responseBody).containsEntry("message", "Check your email");
     }
 
     @Test
@@ -158,6 +208,23 @@ class AuthenticatedUserControllerTest {
             statement.setString(2, email);
             statement.setString(3, passwordHash);
             statement.setTimestamp(4, Timestamp.from(Instant.parse("2026-03-06T12:00:00Z")));
+            statement.executeUpdate();
+        }
+    }
+
+    private void insertVerifiedUser(String email, String passwordHash) throws Exception {
+        try (Connection connection = dataSource.getConnection();
+             PreparedStatement statement = connection.prepareStatement(
+                     """
+                     INSERT INTO users (id, email, password_hash, email_verified, email_verified_at, created_at)
+                     VALUES (?, ?, ?, ?, ?, ?)
+                     """)) {
+            statement.setObject(1, UUID.randomUUID());
+            statement.setString(2, email);
+            statement.setString(3, passwordHash);
+            statement.setBoolean(4, true);
+            statement.setTimestamp(5, Timestamp.from(Instant.parse("2026-03-06T12:30:00Z")));
+            statement.setTimestamp(6, Timestamp.from(Instant.parse("2026-03-06T12:00:00Z")));
             statement.executeUpdate();
         }
     }

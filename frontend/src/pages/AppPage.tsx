@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { getAuthenticatedUser, resendVerificationEmail } from '../api/authApi'
 import { ApiError } from '../api/httpClient'
 import { clearAccessToken } from '../auth/tokenStorage'
 import { getHealth, type HealthResponse } from '../api/healthApi'
@@ -9,9 +10,23 @@ export function AppPage() {
   const navigate = useNavigate()
   const [health, setHealth] = useState<HealthResponse | null>(null)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const [userEmail, setUserEmail] = useState<string | null>(null)
+  const [emailVerified, setEmailVerified] = useState<boolean | null>(null)
+  const [verificationMessage, setVerificationMessage] = useState<string | null>(null)
+  const [isResendingVerification, setIsResendingVerification] = useState(false)
 
   useEffect(() => {
     const controller = new AbortController()
+
+    getAuthenticatedUser(controller.signal)
+      .then((response) => {
+        setUserEmail(response.email)
+        setEmailVerified(response.emailVerified)
+      })
+      .catch(() => {
+        setUserEmail(null)
+        setEmailVerified(null)
+      })
 
     getHealth(controller.signal)
       .then((response) => {
@@ -37,6 +52,20 @@ export function AppPage() {
   function handleLogout() {
     clearAccessToken()
     navigate('/login', { replace: true })
+  }
+
+  async function handleResendVerification() {
+    setIsResendingVerification(true)
+    setVerificationMessage(null)
+
+    try {
+      const response = await resendVerificationEmail()
+      setVerificationMessage(response.message)
+    } catch {
+      setVerificationMessage('Unable to resend verification email')
+    } finally {
+      setIsResendingVerification(false)
+    }
   }
 
   return (
@@ -66,7 +95,43 @@ export function AppPage() {
                 : errorMessage ?? 'Loading backend status...'}
             </strong>
           </div>
+          <div className="info-tile">
+            <span className="info-label">Email verification</span>
+            <strong>
+              {emailVerified === null
+                ? 'Loading verification state...'
+                : emailVerified
+                  ? 'Verified'
+                  : 'Verification required'}
+            </strong>
+          </div>
+          <div className="info-tile">
+            <span className="info-label">Authenticated email</span>
+            <strong>{userEmail ?? 'Loading account...'}</strong>
+          </div>
         </div>
+
+        {emailVerified === false ? (
+          <div className="stack compact-stack">
+            <p className="lead compact-lead">
+              Confirm your email address before relying on recovery and other future
+              account-protection features.
+            </p>
+            {verificationMessage ? (
+              <p className={verificationMessage === 'Check your email' ? 'success-message' : 'form-error'}>
+                {verificationMessage}
+              </p>
+            ) : null}
+            <button
+              className="secondary-action"
+              type="button"
+              onClick={handleResendVerification}
+              disabled={isResendingVerification}
+            >
+              {isResendingVerification ? 'Resending...' : 'Resend verification email'}
+            </button>
+          </div>
+        ) : null}
 
         <div className="actions">
           <button className="secondary-action" type="button" onClick={handleLogout}>

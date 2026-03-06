@@ -8,6 +8,7 @@ type AuthRequest = {
 export type AuthenticatedUserResponse = {
   userId: string
   email: string
+  emailVerified: boolean
 }
 
 export type LoginResponse = {
@@ -19,6 +20,8 @@ export type SignupResponse = LoginResponse
 export type ForgotPasswordResponse = {
   message: string
 }
+
+export type ResendVerificationResponse = ForgotPasswordResponse
 
 export function login(request: AuthRequest, signal?: AbortSignal) {
   return httpClient.post<LoginResponse>('/auth/login', request, { signal })
@@ -34,4 +37,12 @@ export function getAuthenticatedUser(signal?: AbortSignal) {
 
 export function requestPasswordReset(email: string, signal?: AbortSignal) {
   return httpClient.post<ForgotPasswordResponse>('/auth/forgot-password', { email }, { signal })
+}
+
+export function resendVerificationEmail(signal?: AbortSignal) {
+  return httpClient.post<ResendVerificationResponse>('/auth/resend-verification', undefined, { signal })
+}
+
+export function verifyEmail(token: string, signal?: AbortSignal) {
+  return httpClient.post<void>('/auth/verify-email', { token }, { signal })
 }

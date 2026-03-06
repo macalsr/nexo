@@ -1,14 +1,22 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
+import { getAuthenticatedUser, resendVerificationEmail } from '../api/authApi'
 import { getHealth } from '../api/healthApi'
 import { getAccessToken, storeAccessToken } from '../auth/tokenStorage'
 import { AppPage } from './AppPage'
+
+vi.mock('../api/authApi', () => ({
+  getAuthenticatedUser: vi.fn(),
+  resendVerificationEmail: vi.fn(),
+}))
 
 vi.mock('../api/healthApi', () => ({
   getHealth: vi.fn(),
 }))
 
+const getAuthenticatedUserMock = vi.mocked(getAuthenticatedUser)
+const resendVerificationEmailMock = vi.mocked(resendVerificationEmail)
 const getHealthMock = vi.mocked(getHealth)
 
 function renderAppPage(initialPath = '/app') {
@@ -28,7 +36,17 @@ function renderAppPage(initialPath = '/app') {
 describe('AppPage', () => {
   beforeEach(() => {
     window.localStorage.clear()
+    getAuthenticatedUserMock.mockReset()
+    resendVerificationEmailMock.mockReset()
     getHealthMock.mockReset()
+    getAuthenticatedUserMock.mockResolvedValue({
+      userId: 'user-1',
+      email: 'person@example.com',
+      emailVerified: false,
+    })
+    resendVerificationEmailMock.mockResolvedValue({
+      message: 'Check your email',
+    })
     getHealthMock.mockResolvedValue({
       status: 'UP',
       service: 'nexo-api',
@@ -54,5 +72,19 @@ describe('AppPage', () => {
     })
 
     expect(getAccessToken()).toBeNull()
+  })
+
+  it('shows unverified state and lets the user resend verification email', async () => {
+    renderAppPage()
+
+    expect(await screen.findByText('Verification required')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Resend verification email' }))
+
+    await waitFor(() => {
+      expect(screen.getByText('Check your email')).toBeInTheDocument()
+    })
+
+    expect(resendVerificationEmailMock).toHaveBeenCalledTimes(1)
   })
 })

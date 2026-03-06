@@ -46,7 +46,9 @@ describe('ProtectedRoute', () => {
   })
 
   it('shows a loading state while validating an existing session', async () => {
-    let resolveRequest: ((value: { userId: string; email: string }) => void) | undefined
+    let resolveRequest:
+      | ((value: { userId: string; email: string; emailVerified: boolean }) => void)
+      | undefined
 
     getAuthenticatedUserMock.mockImplementation(
       () =>
@@ -62,7 +64,7 @@ describe('ProtectedRoute', () => {
     expect(screen.queryByText('Protected app content')).not.toBeInTheDocument()
     expect(getAuthenticatedUserMock).toHaveBeenCalledTimes(1)
 
-    resolveRequest?.({ userId: 'user-1', email: 'user@example.com' })
+    resolveRequest?.({ userId: 'user-1', email: 'user@example.com', emailVerified: false })
 
     expect(await screen.findByText('Protected app content')).toBeInTheDocument()
   })

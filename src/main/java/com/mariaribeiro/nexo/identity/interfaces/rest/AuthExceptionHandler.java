@@ -2,6 +2,8 @@ package com.mariaribeiro.nexo.identity.interfaces.rest;
 
 import com.mariaribeiro.nexo.identity.application.usecase.DuplicateEmailException;
 import com.mariaribeiro.nexo.identity.application.usecase.InvalidCredentialsException;
+import com.mariaribeiro.nexo.identity.application.usecase.InvalidEmailVerificationTokenException;
+import com.mariaribeiro.nexo.identity.application.usecase.InvalidResetTokenException;
 import com.mariaribeiro.nexo.identity.infrastructure.security.UnauthorizedException;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -30,6 +32,19 @@ public class AuthExceptionHandler {
     public ResponseEntity<AuthErrorResponse> handleDuplicateEmail(DuplicateEmailException exception) {
         return ResponseEntity.status(HttpStatus.CONFLICT)
                 .body(new AuthErrorResponse("Unable to create account"));
+    }
+
+    @ExceptionHandler(InvalidResetTokenException.class)
+    public ResponseEntity<AuthErrorResponse> handleInvalidResetToken(InvalidResetTokenException exception) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(new AuthErrorResponse("Invalid reset token"));
+    }
+
+    @ExceptionHandler(InvalidEmailVerificationTokenException.class)
+    public ResponseEntity<AuthErrorResponse> handleInvalidEmailVerificationToken(
+            InvalidEmailVerificationTokenException exception) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(new AuthErrorResponse("Invalid verification token"));
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

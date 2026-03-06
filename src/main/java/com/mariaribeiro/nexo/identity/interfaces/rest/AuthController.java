@@ -5,9 +5,13 @@ import com.mariaribeiro.nexo.identity.application.usecase.ForgotPasswordUseCase;
 import com.mariaribeiro.nexo.identity.application.usecase.LoginCommand;
 import com.mariaribeiro.nexo.identity.application.usecase.LoginResult;
 import com.mariaribeiro.nexo.identity.application.usecase.LoginUseCase;
+import com.mariaribeiro.nexo.identity.application.usecase.ResetPasswordCommand;
+import com.mariaribeiro.nexo.identity.application.usecase.ResetPasswordUseCase;
 import com.mariaribeiro.nexo.identity.application.usecase.SignupCommand;
 import com.mariaribeiro.nexo.identity.application.usecase.SignupResult;
 import com.mariaribeiro.nexo.identity.application.usecase.SignupUseCase;
+import com.mariaribeiro.nexo.identity.application.usecase.VerifyEmailCommand;
+import com.mariaribeiro.nexo.identity.application.usecase.VerifyEmailUseCase;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -23,14 +27,20 @@ public class AuthController {
     private final LoginUseCase loginUseCase;
     private final SignupUseCase signupUseCase;
     private final ForgotPasswordUseCase forgotPasswordUseCase;
+    private final ResetPasswordUseCase resetPasswordUseCase;
+    private final VerifyEmailUseCase verifyEmailUseCase;
 
     public AuthController(
             LoginUseCase loginUseCase,
             SignupUseCase signupUseCase,
-            ForgotPasswordUseCase forgotPasswordUseCase) {
+            ForgotPasswordUseCase forgotPasswordUseCase,
+            ResetPasswordUseCase resetPasswordUseCase,
+            VerifyEmailUseCase verifyEmailUseCase) {
         this.loginUseCase = loginUseCase;
         this.signupUseCase = signupUseCase;
         this.forgotPasswordUseCase = forgotPasswordUseCase;
+        this.resetPasswordUseCase = resetPasswordUseCase;
+        this.verifyEmailUseCase = verifyEmailUseCase;
     }
 
     @PostMapping("/login")
@@ -51,5 +61,17 @@ public class AuthController {
         forgotPasswordUseCase.requestReset(new ForgotPasswordCommand(request.email()));
         return ResponseEntity.status(HttpStatus.ACCEPTED)
                 .body(new AuthMessageResponse("Check your email"));
+    }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<Void> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
+        resetPasswordUseCase.resetPassword(new ResetPasswordCommand(request.token(), request.newPassword()));
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/verify-email")
+    public ResponseEntity<Void> verifyEmail(@Valid @RequestBody VerifyEmailRequest request) {
+        verifyEmailUseCase.verify(new VerifyEmailCommand(request.token()));
+        return ResponseEntity.noContent().build();
     }
 }

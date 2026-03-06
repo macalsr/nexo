@@ -3,5 +3,11 @@ package com.mariaribeiro.nexo.identity.application.usecase;
 import java.time.Instant;
 import java.util.UUID;
 
-public record AuthenticatedUserView(UUID id, String email, String passwordHash, Instant createdAt) {
+public record AuthenticatedUserView(
+        UUID id,
+        String email,
+        String passwordHash,
+        boolean emailVerified,
+        Instant emailVerifiedAt,
+        Instant createdAt) {
 }

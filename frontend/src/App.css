@@ -37,6 +37,10 @@
   font-size: 0.98rem;
 }
 
+.compact-lead {
+  margin: 0;
+}
+
 .stack {
   display: grid;
   gap: 0.75rem;

@@ -1,20 +1,39 @@
 package com.mariaribeiro.nexo.identity.infrastructure.config;
 
 import com.mariaribeiro.nexo.identity.application.port.CreateUserPort;
+import com.mariaribeiro.nexo.identity.application.port.CreateEmailVerificationTokenPort;
 import com.mariaribeiro.nexo.identity.application.port.CreatePasswordResetTokenPort;
+import com.mariaribeiro.nexo.identity.application.port.DeleteEmailVerificationTokenPort;
+import com.mariaribeiro.nexo.identity.application.port.DeletePasswordResetTokenPort;
+import com.mariaribeiro.nexo.identity.application.port.EmailVerificationDeliveryPort;
+import com.mariaribeiro.nexo.identity.application.port.LoadEmailVerificationTokenPort;
 import com.mariaribeiro.nexo.identity.application.port.LoadUserByEmailPort;
+import com.mariaribeiro.nexo.identity.application.port.LoadPasswordResetTokenPort;
+import com.mariaribeiro.nexo.identity.application.port.MarkUserEmailVerifiedPort;
 import com.mariaribeiro.nexo.identity.application.port.PasswordHashEncoderPort;
 import com.mariaribeiro.nexo.identity.application.port.PasswordHashVerifierPort;
 import com.mariaribeiro.nexo.identity.application.port.PasswordResetDeliveryPort;
 import com.mariaribeiro.nexo.identity.application.port.TokenServicePort;
+import com.mariaribeiro.nexo.identity.application.port.UpdateUserPasswordPort;
 import com.mariaribeiro.nexo.identity.application.usecase.ForgotPasswordService;
 import com.mariaribeiro.nexo.identity.application.usecase.ForgotPasswordUseCase;
+import com.mariaribeiro.nexo.identity.application.usecase.IssueEmailVerificationService;
+import com.mariaribeiro.nexo.identity.application.usecase.IssueEmailVerificationUseCase;
 import com.mariaribeiro.nexo.identity.application.usecase.LoginService;
 import com.mariaribeiro.nexo.identity.application.usecase.LoginUseCase;
+import com.mariaribeiro.nexo.identity.application.usecase.ResendVerificationEmailService;
+import com.mariaribeiro.nexo.identity.application.usecase.ResendVerificationEmailUseCase;
+import com.mariaribeiro.nexo.identity.application.usecase.ResetPasswordService;
+import com.mariaribeiro.nexo.identity.application.usecase.ResetPasswordUseCase;
 import com.mariaribeiro.nexo.identity.application.usecase.SignupService;
 import com.mariaribeiro.nexo.identity.application.usecase.SignupUseCase;
+import com.mariaribeiro.nexo.identity.application.usecase.VerifyEmailService;
+import com.mariaribeiro.nexo.identity.application.usecase.VerifyEmailUseCase;
+import com.mariaribeiro.nexo.identity.infrastructure.notification.StubEmailVerificationDeliveryAdapter;
 import com.mariaribeiro.nexo.identity.infrastructure.notification.StubPasswordResetDeliveryAdapter;
+import com.mariaribeiro.nexo.identity.infrastructure.persistence.EmailVerificationTokenPersistenceAdapter;
 import com.mariaribeiro.nexo.identity.infrastructure.persistence.PasswordResetTokenPersistenceAdapter;
+import com.mariaribeiro.nexo.identity.infrastructure.persistence.SpringDataEmailVerificationTokenRepository;
 import com.mariaribeiro.nexo.identity.infrastructure.persistence.SpringDataPasswordResetTokenRepository;
 import com.mariaribeiro.nexo.identity.infrastructure.persistence.SpringDataUserRepository;
 import com.mariaribeiro.nexo.identity.infrastructure.persistence.UserPersistenceAdapter;
@@ -23,6 +42,7 @@ import com.mariaribeiro.nexo.identity.infrastructure.security.AuthTokenPropertie
 import com.mariaribeiro.nexo.identity.infrastructure.security.BearerTokenAuthenticationFilter;
 import com.mariaribeiro.nexo.identity.infrastructure.security.BcryptPasswordHashEncoder;
 import com.mariaribeiro.nexo.identity.infrastructure.security.BcryptPasswordHashVerifier;
+import com.mariaribeiro.nexo.identity.infrastructure.security.EmailVerificationProperties;
 import com.mariaribeiro.nexo.identity.infrastructure.security.JwtTokenService;
 import com.mariaribeiro.nexo.identity.infrastructure.security.PasswordResetProperties;
 import java.time.Clock;
@@ -34,7 +54,11 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 @Configuration
-@EnableConfigurationProperties({AuthTokenProperties.class, PasswordResetProperties.class})
+@EnableConfigurationProperties({
+        AuthTokenProperties.class,
+        PasswordResetProperties.class,
+        EmailVerificationProperties.class
+})
 public class AuthConfiguration {
 
     @Bean
@@ -59,6 +83,12 @@ public class AuthConfiguration {
     }
 
     @Bean
+    EmailVerificationTokenPersistenceAdapter emailVerificationTokenPersistenceAdapter(
+            SpringDataEmailVerificationTokenRepository emailVerificationTokenRepository) {
+        return new EmailVerificationTokenPersistenceAdapter(emailVerificationTokenRepository);
+    }
+
+    @Bean
     LoadUserByEmailPort loadUserByEmailPort(UserPersistenceAdapter userPersistenceAdapter) {
         return userPersistenceAdapter;
     }
@@ -69,9 +99,49 @@ public class AuthConfiguration {
     }
 
     @Bean
+    UpdateUserPasswordPort updateUserPasswordPort(UserPersistenceAdapter userPersistenceAdapter) {
+        return userPersistenceAdapter;
+    }
+
+    @Bean
+    MarkUserEmailVerifiedPort markUserEmailVerifiedPort(UserPersistenceAdapter userPersistenceAdapter) {
+        return userPersistenceAdapter;
+    }
+
+    @Bean
     CreatePasswordResetTokenPort createPasswordResetTokenPort(
             PasswordResetTokenPersistenceAdapter passwordResetTokenPersistenceAdapter) {
         return passwordResetTokenPersistenceAdapter;
+    }
+
+    @Bean
+    CreateEmailVerificationTokenPort createEmailVerificationTokenPort(
+            EmailVerificationTokenPersistenceAdapter emailVerificationTokenPersistenceAdapter) {
+        return emailVerificationTokenPersistenceAdapter;
+    }
+
+    @Bean
+    LoadPasswordResetTokenPort loadPasswordResetTokenPort(
+            PasswordResetTokenPersistenceAdapter passwordResetTokenPersistenceAdapter) {
+        return passwordResetTokenPersistenceAdapter;
+    }
+
+    @Bean
+    DeletePasswordResetTokenPort deletePasswordResetTokenPort(
+            PasswordResetTokenPersistenceAdapter passwordResetTokenPersistenceAdapter) {
+        return passwordResetTokenPersistenceAdapter;
+    }
+
+    @Bean
+    LoadEmailVerificationTokenPort loadEmailVerificationTokenPort(
+            EmailVerificationTokenPersistenceAdapter emailVerificationTokenPersistenceAdapter) {
+        return emailVerificationTokenPersistenceAdapter;
+    }
+
+    @Bean
+    DeleteEmailVerificationTokenPort deleteEmailVerificationTokenPort(
+            EmailVerificationTokenPersistenceAdapter emailVerificationTokenPersistenceAdapter) {
+        return emailVerificationTokenPersistenceAdapter;
     }
 
     @Bean
@@ -92,6 +162,11 @@ public class AuthConfiguration {
     @Bean
     PasswordResetDeliveryPort passwordResetDeliveryPort() {
         return new StubPasswordResetDeliveryAdapter();
+    }
+
+    @Bean
+    EmailVerificationDeliveryPort emailVerificationDeliveryPort() {
+        return new StubEmailVerificationDeliveryAdapter();
     }
 
     @Bean
@@ -123,8 +198,14 @@ public class AuthConfiguration {
             CreateUserPort createUserPort,
             PasswordHashEncoderPort passwordHashEncoderPort,
             TokenServicePort tokenServicePort,
+            IssueEmailVerificationUseCase issueEmailVerificationUseCase,
             Clock authClock) {
-        return new SignupService(createUserPort, passwordHashEncoderPort, tokenServicePort, authClock);
+        return new SignupService(
+                createUserPort,
+                passwordHashEncoderPort,
+                tokenServicePort,
+                issueEmailVerificationUseCase,
+                authClock);
     }
 
     @Bean
@@ -140,5 +221,55 @@ public class AuthConfiguration {
                 passwordResetDeliveryPort,
                 authClock,
                 passwordResetProperties.getTokenTtl());
+    }
+
+    @Bean
+    ResetPasswordUseCase resetPasswordUseCase(
+            LoadPasswordResetTokenPort loadPasswordResetTokenPort,
+            UpdateUserPasswordPort updateUserPasswordPort,
+            DeletePasswordResetTokenPort deletePasswordResetTokenPort,
+            PasswordHashEncoderPort passwordHashEncoderPort,
+            Clock authClock) {
+        return new ResetPasswordService(
+                loadPasswordResetTokenPort,
+                updateUserPasswordPort,
+                deletePasswordResetTokenPort,
+                passwordHashEncoderPort,
+                authClock);
+    }
+
+    @Bean
+    IssueEmailVerificationUseCase issueEmailVerificationUseCase(
+            CreateEmailVerificationTokenPort createEmailVerificationTokenPort,
+            DeleteEmailVerificationTokenPort deleteEmailVerificationTokenPort,
+            EmailVerificationDeliveryPort emailVerificationDeliveryPort,
+            Clock authClock,
+            EmailVerificationProperties emailVerificationProperties) {
+        return new IssueEmailVerificationService(
+                createEmailVerificationTokenPort,
+                deleteEmailVerificationTokenPort,
+                emailVerificationDeliveryPort,
+                authClock,
+                emailVerificationProperties.getTokenTtl());
+    }
+
+    @Bean
+    ResendVerificationEmailUseCase resendVerificationEmailUseCase(
+            LoadUserByEmailPort loadUserByEmailPort,
+            IssueEmailVerificationUseCase issueEmailVerificationUseCase) {
+        return new ResendVerificationEmailService(loadUserByEmailPort, issueEmailVerificationUseCase);
+    }
+
+    @Bean
+    VerifyEmailUseCase verifyEmailUseCase(
+            LoadEmailVerificationTokenPort loadEmailVerificationTokenPort,
+            MarkUserEmailVerifiedPort markUserEmailVerifiedPort,
+            DeleteEmailVerificationTokenPort deleteEmailVerificationTokenPort,
+            Clock authClock) {
+        return new VerifyEmailService(
+                loadEmailVerificationTokenPort,
+                markUserEmailVerifiedPort,
+                deleteEmailVerificationTokenPort,
+                authClock);
     }
 }
