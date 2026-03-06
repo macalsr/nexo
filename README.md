@@ -184,6 +184,7 @@ Authentication enforcement:
 - `/health` remains public.
 - `/auth/login` remains public.
 - Protected routes reject missing, invalid, and expired tokens with the same generic `401` response.
+- Browser CORS preflight requests (`OPTIONS`) for protected routes are allowed without authentication so authenticated frontend calls can complete.
 - Valid tokens attach authenticated user identity to the request context for downstream use.
 
 ## 8. Authentication Persistence Foundation
@@ -350,6 +351,11 @@ Mandatory documentation rule:
 - Introduced `APP_WEB_CORS_ALLOWED_ORIGINS` for environment-driven origin control, defaulting to `http://localhost:5173`.
 - Added a backend test that verifies `GET /health` responds with the expected CORS header for the frontend origin.
 - Why it matters: allows the mobile-first frontend to call the backend directly during local development without browser cross-origin failures.
+
+### 2026-03-06 - Protected Route CORS Preflight Fix (FOUNDATION)
+- Excluded browser `OPTIONS` preflight requests from bearer-token enforcement on protected endpoints such as `/me`.
+- Added backend coverage proving `/me` now answers CORS preflight requests with the expected allow-origin and allow-methods headers.
+- Why it matters: fixes authenticated frontend requests that send `Authorization` headers, which browsers preflight before calling protected APIs.
 
 ### 2026-03-05 - README Documentation Standard
 - Created a structured, documentation-first README.

@@ -26,6 +26,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
 import org.springframework.boot.test.web.server.LocalServerPort;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
@@ -115,6 +116,25 @@ class AuthenticatedUserControllerTest {
         assertThat(response.statusCode()).isEqualTo(200);
         assertThat(responseBody).containsEntry("email", "person@example.com");
         assertThat(responseBody.get("userId")).isNotNull();
+    }
+
+    @Test
+    void meAllowsCorsPreflightRequestsWithoutAuthentication() throws Exception {
+        HttpResponse<String> response = HttpClient.newHttpClient().send(
+                HttpRequest.newBuilder()
+                        .uri(URI.create("http://localhost:" + port + "/me"))
+                        .header("Origin", "http://localhost:5173")
+                        .header("Access-Control-Request-Method", "GET")
+                        .header("Access-Control-Request-Headers", "authorization,content-type")
+                        .method(HttpMethod.OPTIONS.name(), HttpRequest.BodyPublishers.noBody())
+                        .build(),
+                HttpResponse.BodyHandlers.ofString());
+
+        assertThat(response.statusCode()).isEqualTo(200);
+        assertThat(response.headers().firstValue("access-control-allow-origin"))
+                .contains("http://localhost:5173");
+        assertThat(response.headers().firstValue("access-control-allow-methods").orElse(""))
+                .contains("GET");
     }
 
     private HttpResponse<String> sendProtectedRequest(String authorizationHeader) throws Exception {
