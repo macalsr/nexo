@@ -116,6 +116,12 @@
   color: #fda4af;
 }
 
+.success-message {
+  margin: 0;
+  font-size: 0.875rem;
+  color: #86efac;
+}
+
 .primary-action,
 .secondary-action {
   width: 100%;

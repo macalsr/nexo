@@ -13,6 +13,7 @@ import java.net.http.HttpResponse;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.Statement;
+import java.sql.Timestamp;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
@@ -156,7 +157,7 @@ class AuthenticatedUserControllerTest {
             statement.setObject(1, UUID.randomUUID());
             statement.setString(2, email);
             statement.setString(3, passwordHash);
-            statement.setObject(4, Instant.parse("2026-03-06T12:00:00Z"));
+            statement.setTimestamp(4, Timestamp.from(Instant.parse("2026-03-06T12:00:00Z")));
             statement.executeUpdate();
         }
     }

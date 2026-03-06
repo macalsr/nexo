@@ -1,14 +1,21 @@
 package com.mariaribeiro.nexo.identity.infrastructure.config;
 
 import com.mariaribeiro.nexo.identity.application.port.CreateUserPort;
+import com.mariaribeiro.nexo.identity.application.port.CreatePasswordResetTokenPort;
 import com.mariaribeiro.nexo.identity.application.port.LoadUserByEmailPort;
 import com.mariaribeiro.nexo.identity.application.port.PasswordHashEncoderPort;
 import com.mariaribeiro.nexo.identity.application.port.PasswordHashVerifierPort;
+import com.mariaribeiro.nexo.identity.application.port.PasswordResetDeliveryPort;
 import com.mariaribeiro.nexo.identity.application.port.TokenServicePort;
+import com.mariaribeiro.nexo.identity.application.usecase.ForgotPasswordService;
+import com.mariaribeiro.nexo.identity.application.usecase.ForgotPasswordUseCase;
 import com.mariaribeiro.nexo.identity.application.usecase.LoginService;
 import com.mariaribeiro.nexo.identity.application.usecase.LoginUseCase;
 import com.mariaribeiro.nexo.identity.application.usecase.SignupService;
 import com.mariaribeiro.nexo.identity.application.usecase.SignupUseCase;
+import com.mariaribeiro.nexo.identity.infrastructure.notification.StubPasswordResetDeliveryAdapter;
+import com.mariaribeiro.nexo.identity.infrastructure.persistence.PasswordResetTokenPersistenceAdapter;
+import com.mariaribeiro.nexo.identity.infrastructure.persistence.SpringDataPasswordResetTokenRepository;
 import com.mariaribeiro.nexo.identity.infrastructure.persistence.SpringDataUserRepository;
 import com.mariaribeiro.nexo.identity.infrastructure.persistence.UserPersistenceAdapter;
 import com.mariaribeiro.nexo.identity.infrastructure.security.AuthenticationRequestContext;
@@ -17,6 +24,7 @@ import com.mariaribeiro.nexo.identity.infrastructure.security.BearerTokenAuthent
 import com.mariaribeiro.nexo.identity.infrastructure.security.BcryptPasswordHashEncoder;
 import com.mariaribeiro.nexo.identity.infrastructure.security.BcryptPasswordHashVerifier;
 import com.mariaribeiro.nexo.identity.infrastructure.security.JwtTokenService;
+import com.mariaribeiro.nexo.identity.infrastructure.security.PasswordResetProperties;
 import java.time.Clock;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -26,7 +34,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 @Configuration
-@EnableConfigurationProperties(AuthTokenProperties.class)
+@EnableConfigurationProperties({AuthTokenProperties.class, PasswordResetProperties.class})
 public class AuthConfiguration {
 
     @Bean
@@ -45,6 +53,12 @@ public class AuthConfiguration {
     }
 
     @Bean
+    PasswordResetTokenPersistenceAdapter passwordResetTokenPersistenceAdapter(
+            SpringDataPasswordResetTokenRepository passwordResetTokenRepository) {
+        return new PasswordResetTokenPersistenceAdapter(passwordResetTokenRepository);
+    }
+
+    @Bean
     LoadUserByEmailPort loadUserByEmailPort(UserPersistenceAdapter userPersistenceAdapter) {
         return userPersistenceAdapter;
     }
@@ -52,6 +66,12 @@ public class AuthConfiguration {
     @Bean
     CreateUserPort createUserPort(UserPersistenceAdapter userPersistenceAdapter) {
         return userPersistenceAdapter;
+    }
+
+    @Bean
+    CreatePasswordResetTokenPort createPasswordResetTokenPort(
+            PasswordResetTokenPersistenceAdapter passwordResetTokenPersistenceAdapter) {
+        return passwordResetTokenPersistenceAdapter;
     }
 
     @Bean
@@ -67,6 +87,11 @@ public class AuthConfiguration {
     @Bean
     TokenServicePort tokenServicePort(Clock authClock, AuthTokenProperties properties) {
         return new JwtTokenService(authClock, properties);
+    }
+
+    @Bean
+    PasswordResetDeliveryPort passwordResetDeliveryPort() {
+        return new StubPasswordResetDeliveryAdapter();
     }
 
     @Bean
@@ -100,5 +125,20 @@ public class AuthConfiguration {
             TokenServicePort tokenServicePort,
             Clock authClock) {
         return new SignupService(createUserPort, passwordHashEncoderPort, tokenServicePort, authClock);
+    }
+
+    @Bean
+    ForgotPasswordUseCase forgotPasswordUseCase(
+            LoadUserByEmailPort loadUserByEmailPort,
+            CreatePasswordResetTokenPort createPasswordResetTokenPort,
+            PasswordResetDeliveryPort passwordResetDeliveryPort,
+            Clock authClock,
+            PasswordResetProperties passwordResetProperties) {
+        return new ForgotPasswordService(
+                loadUserByEmailPort,
+                createPasswordResetTokenPort,
+                passwordResetDeliveryPort,
+                authClock,
+                passwordResetProperties.getTokenTtl());
     }
 }

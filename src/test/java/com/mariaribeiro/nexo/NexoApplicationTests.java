@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.SQLException;
+import java.util.UUID;
 import javax.sql.DataSource;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -45,16 +46,18 @@ class NexoApplicationTests {
     void usersTableEnforcesLowercaseEmailUniqueness() throws Exception {
         try (Connection connection = dataSource.getConnection();
              var firstInsert = connection.prepareStatement(
-                     "INSERT INTO users (id, email, password_hash) VALUES (RANDOM_UUID(), ?, ?)");
+                     "INSERT INTO users (id, email, password_hash) VALUES (?, ?, ?)");
              var secondInsert = connection.prepareStatement(
-                     "INSERT INTO users (id, email, password_hash) VALUES (RANDOM_UUID(), ?, ?)")) {
+                     "INSERT INTO users (id, email, password_hash) VALUES (?, ?, ?)")) {
 
-            firstInsert.setString(1, "person@example.com");
-            firstInsert.setString(2, "$2a$10$abcdefghijklmnopqrstuv");
+            firstInsert.setObject(1, UUID.randomUUID());
+            firstInsert.setString(2, "person@example.com");
+            firstInsert.setString(3, "$2a$10$abcdefghijklmnopqrstuv");
             firstInsert.executeUpdate();
 
-            secondInsert.setString(1, "person@example.com");
-            secondInsert.setString(2, "$2a$10$zyxwvutsrqponmlkjihgfe");
+            secondInsert.setObject(1, UUID.randomUUID());
+            secondInsert.setString(2, "person@example.com");
+            secondInsert.setString(3, "$2a$10$zyxwvutsrqponmlkjihgfe");
 
             assertThatThrownBy(secondInsert::executeUpdate)
                     .isInstanceOf(SQLException.class);
@@ -65,10 +68,11 @@ class NexoApplicationTests {
     void usersTableRejectsNonNormalizedEmailValues() throws Exception {
         try (Connection connection = dataSource.getConnection();
              var insert = connection.prepareStatement(
-                     "INSERT INTO users (id, email, password_hash) VALUES (RANDOM_UUID(), ?, ?)")) {
+                     "INSERT INTO users (id, email, password_hash) VALUES (?, ?, ?)")) {
 
-            insert.setString(1, "Person@Example.com");
-            insert.setString(2, "$2a$10$abcdefghijklmnopqrstuv");
+            insert.setObject(1, UUID.randomUUID());
+            insert.setString(2, "Person@Example.com");
+            insert.setString(3, "$2a$10$abcdefghijklmnopqrstuv");
 
             assertThatThrownBy(insert::executeUpdate)
                     .isInstanceOf(SQLException.class);

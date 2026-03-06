@@ -12,6 +12,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.Statement;
+import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
@@ -47,6 +48,7 @@ class AuthControllerTest {
     void cleanUsers() throws Exception {
         try (Connection connection = dataSource.getConnection();
              Statement statement = connection.createStatement()) {
+            statement.executeUpdate("DELETE FROM password_reset_tokens");
             statement.executeUpdate("DELETE FROM users");
         }
     }
@@ -146,6 +148,52 @@ class AuthControllerTest {
         assertThat(errors).containsEntry("password", "Password must be at least 8 characters");
     }
 
+    @Test
+    void forgotPasswordReturnsGenericAcceptedResponseAndPersistsExpiringTokenForExistingUser() throws Exception {
+        insertUser("person@example.com", passwordEncoder.encode("secret123"));
+
+        HttpResponse<String> response = sendForgotPassword("Person@Example.com");
+        Map<String, Object> responseBody = objectMapper.readValue(response.body(), Map.class);
+        Map<String, Object> storedToken = loadPasswordResetToken();
+
+        assertThat(response.statusCode()).isEqualTo(202);
+        assertThat(responseBody).containsEntry("message", "Check your email");
+        assertThat(storedToken.get("token")).isInstanceOf(String.class);
+        assertThat(storedToken.get("token")).isNotEqualTo("");
+        assertThat(Instant.parse((String) storedToken.get("expires_at")))
+                .isAfter(Instant.parse((String) storedToken.get("created_at")));
+    }
+
+    @Test
+    void forgotPasswordReturnsSameGenericAcceptedResponseWhenUserDoesNotExist() throws Exception {
+        HttpResponse<String> response = sendForgotPassword("missing@example.com");
+        Map<String, Object> responseBody = objectMapper.readValue(response.body(), Map.class);
+
+        assertThat(response.statusCode()).isEqualTo(202);
+        assertThat(responseBody).containsEntry("message", "Check your email");
+        assertThat(countPasswordResetTokens()).isZero();
+    }
+
+    @Test
+    void forgotPasswordReturnsFieldValidationErrorsForInvalidPayload() throws Exception {
+        HttpResponse<String> response = HttpClient.newHttpClient().send(
+                HttpRequest.newBuilder()
+                        .uri(URI.create("http://localhost:" + port + "/auth/forgot-password"))
+                        .header("Content-Type", MediaType.APPLICATION_JSON_VALUE)
+                        .POST(HttpRequest.BodyPublishers.ofString("""
+                                {"email":"invalid-email"}
+                                """))
+                        .build(),
+                HttpResponse.BodyHandlers.ofString());
+
+        Map<String, Object> responseBody = objectMapper.readValue(response.body(), Map.class);
+        Map<String, Object> errors = (Map<String, Object>) responseBody.get("errors");
+
+        assertThat(response.statusCode()).isEqualTo(400);
+        assertThat(responseBody).containsEntry("message", "Validation failed");
+        assertThat(errors).containsEntry("email", "Enter a valid email address");
+    }
+
     private HttpResponse<String> sendLogin(String email, String password) throws Exception {
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create("http://localhost:" + port + "/auth/login"))
@@ -163,6 +211,17 @@ class AuthControllerTest {
                 .header("Content-Type", MediaType.APPLICATION_JSON_VALUE)
                 .POST(HttpRequest.BodyPublishers.ofString(
                         objectMapper.writeValueAsString(Map.of("email", email, "password", password))))
+                .build();
+
+        return HttpClient.newHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
+    }
+
+    private HttpResponse<String> sendForgotPassword(String email) throws Exception {
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create("http://localhost:" + port + "/auth/forgot-password"))
+                .header("Content-Type", MediaType.APPLICATION_JSON_VALUE)
+                .POST(HttpRequest.BodyPublishers.ofString(
+                        objectMapper.writeValueAsString(Map.of("email", email))))
                 .build();
 
         return HttpClient.newHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
@@ -186,6 +245,35 @@ class AuthControllerTest {
         }
     }
 
+    private Map<String, Object> loadPasswordResetToken() throws Exception {
+        try (Connection connection = dataSource.getConnection();
+             PreparedStatement statement = connection.prepareStatement(
+                     """
+                     SELECT token, expires_at, created_at
+                     FROM password_reset_tokens
+                     FETCH FIRST 1 ROWS ONLY
+                     """)) {
+            try (ResultSet resultSet = statement.executeQuery()) {
+                assertThat(resultSet.next()).isTrue();
+                Map<String, Object> token = new HashMap<>();
+                token.put("token", resultSet.getString("token"));
+                token.put("expires_at", resultSet.getTimestamp("expires_at").toInstant().toString());
+                token.put("created_at", resultSet.getTimestamp("created_at").toInstant().toString());
+                return token;
+            }
+        }
+    }
+
+    private int countPasswordResetTokens() throws Exception {
+        try (Connection connection = dataSource.getConnection();
+             PreparedStatement statement = connection.prepareStatement(
+                     "SELECT COUNT(*) FROM password_reset_tokens");
+             ResultSet resultSet = statement.executeQuery()) {
+            assertThat(resultSet.next()).isTrue();
+            return resultSet.getInt(1);
+        }
+    }
+
     private void insertUser(String email, String passwordHash) throws Exception {
         try (Connection connection = dataSource.getConnection();
              PreparedStatement statement = connection.prepareStatement(
@@ -193,7 +281,7 @@ class AuthControllerTest {
             statement.setObject(1, UUID.randomUUID());
             statement.setString(2, email);
             statement.setString(3, passwordHash);
-            statement.setObject(4, Instant.parse("2026-03-06T12:00:00Z"));
+            statement.setTimestamp(4, Timestamp.from(Instant.parse("2026-03-06T12:00:00Z")));
             statement.executeUpdate();
         }
     }

@@ -88,6 +88,7 @@ File: `src/main/resources/application-local.properties`
 - `APP_WEB_CORS_ALLOWED_ORIGINS` (default `http://localhost:5173`)
 - `APP_AUTH_JWT_SECRET` (default local development secret in `application.properties`)
 - `APP_AUTH_JWT_ACCESS_TOKEN_TTL` (default `PT24H`)
+- `APP_AUTH_PASSWORD_RESET_TOKEN_TTL` (default `PT15M`)
 
 ### 5.2 Test profile
 File: `src/test/resources/application.properties`
@@ -169,7 +170,33 @@ curl -i -X POST http://localhost:8080/auth/signup \
   -d '{"email":"person@example.com","password":"secret123"}'
 ```
 
-### 7.4 Authenticated Identity
+### 7.4 Forgot Password Request
+- Method: `POST`
+- Path: `/auth/forgot-password`
+- Public endpoint
+- Request body:
+  - `email`
+- Validation:
+  - `email` must be present and a valid email address
+- Success response: `202 Accepted` JSON
+  - `message`: `Check your email`
+- Privacy behavior:
+  - returns the same success response whether the email exists or not
+  - does not expose account existence in the API or frontend flow
+- Reset-token behavior:
+  - creates a password reset token only when the normalized email matches an existing user
+  - stores the token with an expiration timestamp
+  - default expiration is `15 minutes` (`PT15M`)
+  - email delivery is currently stubbed; no real provider is called yet
+
+Example:
+```bash
+curl -i -X POST http://localhost:8080/auth/forgot-password \
+  -H "Content-Type: application/json" \
+  -d '{"email":"person@example.com"}'
+```
+
+### 7.5 Authenticated Identity
 - Method: `GET`
 - Path: `/me`
 - Protected endpoint
@@ -183,6 +210,7 @@ curl -i -X POST http://localhost:8080/auth/signup \
 Authentication enforcement:
 - `/health` remains public.
 - `/auth/login` remains public.
+- `/auth/forgot-password` remains public.
 - Protected routes reject missing, invalid, and expired tokens with the same generic `401` response.
 - Browser CORS preflight requests (`OPTIONS`) for protected routes are allowed without authentication so authenticated frontend calls can complete.
 - Valid tokens attach authenticated user identity to the request context for downstream use.
@@ -194,6 +222,13 @@ Authentication enforcement:
   - `email` (`VARCHAR(320)`, required, unique)
   - `password_hash` (`VARCHAR(255)`, required)
   - `created_at` (`TIMESTAMP`, required, defaults to current timestamp)
+- Table: `password_reset_tokens`
+- Columns:
+  - `id` (`UUID`, primary key)
+  - `user_id` (`UUID`, required, foreign key to `users.id`)
+  - `token` (`VARCHAR(128)`, required, unique)
+  - `expires_at` (`TIMESTAMP`, required)
+  - `created_at` (`TIMESTAMP`, required)
 
 Email normalization strategy:
 - Emails are normalized to trimmed lowercase before entering the domain model.
@@ -205,6 +240,7 @@ Why this matters:
 
 ## 9. Frontend Routes
 - `/login`: email/password login page with client-side validation and generic auth failure handling
+- `/forgot-password`: email-only password reset request page with generic success feedback
 - `/signup`: email/password signup page with client-side validation and immediate authenticated access on success
 - `/app`: post-login app shell route, guarded by centralized session validation
 
@@ -214,7 +250,10 @@ MVP auth flow:
 - Login submits to `POST /auth/login`
 - On success, the frontend stores `accessToken` in browser `localStorage` under `nexo.accessToken`
 - The app redirects to `/app`
+- Forgot-password submits to `POST /auth/forgot-password`
+- On accepted forgot-password requests, the frontend always shows `Check your email`
 - `/login` and `/signup` stay accessible even if a stale token exists in local storage; session validity is decided only by the protected route guard.
+- `/app` exposes an explicit logout action that clears the stored token and returns the user to `/login`.
 - Visiting `/app` without a token redirects immediately to `/login`
 - Visiting `/app` with a stored token triggers `GET /me` before protected content renders
 - If `GET /me` returns `401`, the frontend clears `nexo.accessToken` and redirects to `/login`
@@ -282,7 +321,7 @@ Mandatory documentation rule:
 
 ### 2026-03-06 - Protected Route Authentication Enforcement (FOUNDATION)
 - Added centralized bearer-token enforcement for protected routes while keeping `/health` and `/auth/login` public.
-- Added `GET /auth/me` as a minimal protected endpoint that exposes the authenticated user identity from the request context.
+- Added `GET /me` as a minimal protected endpoint that exposes the authenticated user identity from the request context.
 - Standardized protected-route auth failures to `401` with the generic message `Unauthorized` for missing, invalid, and expired tokens.
 - Propagated authenticated user identity through the request context for future audit and workspace authorization logic.
 - Why it matters: turns token issuance into actual access control and creates the extension point for future authorization rules.
@@ -320,6 +359,7 @@ Mandatory documentation rule:
 - Cleared the stored access token and redirected to `/login` on `401 Unauthorized` session validation failures.
 - Added an in-guard loading state while session validation is running so the app shell never flashes before auth is confirmed.
 - Kept `/login` and `/signup` reachable even when a stale token exists, avoiding client-side route loops back to `/app`.
+- Added explicit frontend logout from `/app` so users can end a valid session without relying on token expiry or manual storage cleanup.
 - Why it matters: makes the MVP authenticated flow reliable across reloads and prevents protected UI from rendering on stale sessions.
 
 ### 2026-03-06 - Frontend Route Guard Test Coverage (FOUNDATION)
@@ -358,6 +398,14 @@ Mandatory documentation rule:
 - Excluded browser `OPTIONS` preflight requests from bearer-token enforcement on protected endpoints such as `/me`.
 - Added backend coverage proving `/me` now answers CORS preflight requests with the expected allow-origin and allow-methods headers.
 - Why it matters: fixes authenticated frontend requests that send `Authorization` headers, which browsers preflight before calling protected APIs.
+
+### 2026-03-06 - Forgot Password Request Flow (FOUNDATION)
+- Added `POST /auth/forgot-password` with generic `202 Accepted` responses so password reset requests do not reveal whether an account exists.
+- Persisted password reset tokens with expiration metadata in the new `password_reset_tokens` table and made the TTL configurable through `APP_AUTH_PASSWORD_RESET_TOKEN_TTL` (default `PT15M`).
+- Added a frontend `/forgot-password` route linked from `/login`, with client-side email validation and the generic success message `Check your email`.
+- Stubbed delivery behind a backend port so the request flow is complete without integrating a real email provider yet.
+- Added backend and frontend automated tests covering token creation, generic responses, validation, and the new UI entry point.
+- Why it matters: establishes the first secure password-recovery request path without leaking account existence, while keeping the delivery mechanism swappable for future production integration.
 
 ### 2026-03-05 - README Documentation Standard
 - Created a structured, documentation-first README.

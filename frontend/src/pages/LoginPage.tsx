@@ -146,6 +146,9 @@ export function LoginPage() {
         </form>
 
         <div className="actions stacked-actions">
+          <Link className="secondary-action" to="/forgot-password">
+            Forgot password?
+          </Link>
           <Link className="secondary-action" to="/signup">
             Create a new account
           </Link>

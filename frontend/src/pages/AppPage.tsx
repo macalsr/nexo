@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { ApiError } from '../api/httpClient'
+import { clearAccessToken } from '../auth/tokenStorage'
 import { getHealth, type HealthResponse } from '../api/healthApi'
 import { env } from '../config/env'
 
 export function AppPage() {
+  const navigate = useNavigate()
   const [health, setHealth] = useState<HealthResponse | null>(null)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
@@ -31,6 +33,11 @@ export function AppPage() {
 
     return () => controller.abort()
   }, [])
+
+  function handleLogout() {
+    clearAccessToken()
+    navigate('/login', { replace: true })
+  }
 
   return (
     <main className="mobile-shell">
@@ -62,9 +69,9 @@ export function AppPage() {
         </div>
 
         <div className="actions">
-          <Link className="secondary-action" to="/login">
-            Back to login placeholder
-          </Link>
+          <button className="secondary-action" type="button" onClick={handleLogout}>
+            Logout
+          </button>
         </div>
       </section>
     </main>
