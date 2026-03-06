@@ -1,8 +1,8 @@
 import { useState, type FormEvent } from 'react'
-import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { signup } from '../api/authApi'
 import { ApiError } from '../api/httpClient'
-import { hasAccessToken, storeAccessToken } from '../auth/tokenStorage'
+import { storeAccessToken } from '../auth/tokenStorage'
 import { env } from '../config/env'
 
 type FormValues = {
@@ -27,10 +27,6 @@ export function SignupPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const redirectTo =
     (location.state as { from?: { pathname?: string } } | null)?.from?.pathname ?? '/app'
-
-  if (hasAccessToken()) {
-    return <Navigate to="/app" replace />
-  }
 
   function validate(values: FormValues) {
     const nextErrors: FieldErrors = {}

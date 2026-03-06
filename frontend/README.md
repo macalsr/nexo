@@ -54,6 +54,7 @@ Variable:
 - The token is stored in `localStorage` for the MVP only; a more durable auth model can replace `src/auth/tokenStorage.ts` later.
 - Protected content is never rendered until `src/routing/ProtectedRoute.tsx` confirms the stored token with `GET /me`.
 - If `GET /me` returns `401`, the token is cleared and the user is redirected back to `/login`.
+- The `/login` and `/signup` screens remain reachable even if a stale token is still stored locally; only the protected route decides whether the session is valid.
 - Automated route-guard coverage lives in `src/routing/ProtectedRoute.test.tsx` and runs with Vitest in `jsdom`.
 - Automated signup coverage lives in `src/pages/SignupPage.test.tsx`.
 - Final visual design remains intentionally out of scope for this phase.

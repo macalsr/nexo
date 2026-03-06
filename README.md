@@ -214,6 +214,7 @@ MVP auth flow:
 - Login submits to `POST /auth/login`
 - On success, the frontend stores `accessToken` in browser `localStorage` under `nexo.accessToken`
 - The app redirects to `/app`
+- `/login` and `/signup` stay accessible even if a stale token exists in local storage; session validity is decided only by the protected route guard.
 - Visiting `/app` without a token redirects immediately to `/login`
 - Visiting `/app` with a stored token triggers `GET /me` before protected content renders
 - If `GET /me` returns `401`, the frontend clears `nexo.accessToken` and redirects to `/login`
@@ -318,6 +319,7 @@ Mandatory documentation rule:
 - Added frontend `GET /me` session validation before any protected content is rendered after navigation or page reload.
 - Cleared the stored access token and redirected to `/login` on `401 Unauthorized` session validation failures.
 - Added an in-guard loading state while session validation is running so the app shell never flashes before auth is confirmed.
+- Kept `/login` and `/signup` reachable even when a stale token exists, avoiding client-side route loops back to `/app`.
 - Why it matters: makes the MVP authenticated flow reliable across reloads and prevents protected UI from rendering on stale sessions.
 
 ### 2026-03-06 - Frontend Route Guard Test Coverage (FOUNDATION)
