@@ -19,7 +19,9 @@ This frontend is a mobile-first React app prepared for PWA installability, envir
   - `src/api/authApi.ts` for `POST /auth/resend-verification`
   - `src/api/authApi.ts` for `POST /auth/signup`
 - Session handling:
-  - `src/auth/tokenStorage.ts` stores the access token in `localStorage` under `nexo.accessToken`
+  - `src/auth/tokenStorage.ts` stores the access token under `nexo.accessToken`
+  - `Remember me` enabled stores the token in `localStorage`
+  - `Remember me` disabled stores the token in `sessionStorage`
   - centralized `Authorization: Bearer <token>` header injection in `src/api/httpClient.ts`
   - `src/routing/ProtectedRoute.tsx` validates stored sessions with `GET /me` before rendering `/app`
   - `GET /me` exposes `emailVerified` so the app shell can reflect verification state
@@ -63,7 +65,9 @@ Variable:
 - Forgot-password success is intentionally generic (`Check your email`) so the UI does not reveal whether the account exists.
 - Email verification links are consumed on `/verify-email`, which calls `POST /auth/verify-email` and shows only success/failure state.
 - Resending verification from `/app` always returns the generic message `Check your email`.
-- The token is stored in `localStorage` for the MVP only; a more durable auth model can replace `src/auth/tokenStorage.ts` later.
+- Login defaults to `Remember me` enabled so the session survives browser restarts unless the user opts out.
+- Session-only login uses `sessionStorage`, which is cleared on browser close on a best-effort basis and can vary with browser session-restore behavior.
+- A more durable auth model can still replace `src/auth/tokenStorage.ts` later if the product needs stronger session controls.
 - Password reset delivery is currently stubbed on the backend, so the request flow persists an expiring token but does not call a real email provider yet.
 - Email verification delivery is also stubbed on the backend for now.
 - Protected content is never rendered until `src/routing/ProtectedRoute.tsx` confirms the stored token with `GET /me`.

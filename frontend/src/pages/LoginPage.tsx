@@ -8,6 +8,7 @@ import { env } from '../config/env'
 type FormValues = {
   email: string
   password: string
+  rememberMe: boolean
 }
 
 type FieldErrors = Partial<Record<keyof FormValues, string>>
@@ -20,6 +21,7 @@ export function LoginPage() {
   const [formValues, setFormValues] = useState<FormValues>({
     email: '',
     password: '',
+    rememberMe: true,
   })
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({})
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
@@ -62,7 +64,7 @@ export function LoginPage() {
         password: formValues.password,
       })
 
-      storeAccessToken(response.accessToken)
+      storeAccessToken(response.accessToken, formValues.rememberMe)
       navigate(redirectTo, { replace: true })
     } catch (error: unknown) {
       if (error instanceof ApiError && error.status === 401) {
@@ -133,6 +135,25 @@ export function LoginPage() {
               {fieldErrors.password}
             </p>
           ) : null}
+
+          <label className="checkbox-field">
+            <input
+              type="checkbox"
+              name="rememberMe"
+              checked={formValues.rememberMe}
+              onChange={(event) => {
+                const rememberMe = event.target.checked
+                setFormValues((current) => ({ ...current, rememberMe }))
+              }}
+            />
+            <span>Remember me</span>
+          </label>
+
+          <p className="field-hint">
+            Keep this enabled to stay signed in after restarting the browser. If
+            disabled, the session is cleared on browser close on a best-effort
+            basis.
+          </p>
 
           {errorMessage ? (
             <p className="form-error" role="alert">

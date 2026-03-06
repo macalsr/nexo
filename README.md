@@ -329,7 +329,9 @@ MVP auth flow:
 - Signup submits to `POST /auth/signup`
 - On valid signup, the frontend stores the returned `accessToken` and navigates directly to `/app`
 - Login submits to `POST /auth/login`
-- On success, the frontend stores `accessToken` in browser `localStorage` under `nexo.accessToken`
+- On success, the frontend stores `accessToken` under `nexo.accessToken` in:
+  - `localStorage` when `Remember me` is enabled
+  - `sessionStorage` when `Remember me` is disabled
 - The app redirects to `/app`
 - Signup also triggers email-verification issuance through the backend stubbed delivery flow
 - `/verify-email` submits the link token to `POST /auth/verify-email`
@@ -339,6 +341,7 @@ MVP auth flow:
 - Reset-password submits the reset token plus a new password to `POST /auth/reset-password`
 - Successful reset invalidates the token and allows subsequent login with the new password
 - `/login` and `/signup` stay accessible even if a stale token exists in local storage; session validity is decided only by the protected route guard.
+- Session-only login uses browser `sessionStorage`, which is cleared on browser close on a best-effort basis and may vary with browser session-restore behavior.
 - `/app` exposes an explicit logout action that clears the stored token and returns the user to `/login`.
 - Visiting `/app` without a token redirects immediately to `/login`
 - Visiting `/app` with a stored token triggers `GET /me` before protected content renders
@@ -509,6 +512,13 @@ Mandatory documentation rule:
 - Stubbed verification delivery behind a port so the flow remains easy to swap to a real provider later.
 - Added backend and frontend automated tests covering verification, resend, state reflection, and token consumption.
 - Why it matters: improves account integrity and recovery readiness without overcomplicating a still-MVP authentication architecture.
+
+### 2026-03-06 - Frontend Remember Me Option (FOUNDATION)
+- Added a `Remember me` toggle to the login flow so users can choose persistent or session-only token storage.
+- Successful login now stores `nexo.accessToken` in `localStorage` when remembered and in `sessionStorage` otherwise.
+- Documented the browser-storage limitation that session-only persistence clears on browser close on a best-effort basis.
+- Added focused frontend tests covering storage selection and login-form behavior.
+- Why it matters: makes session persistence explicit and predictable without changing the backend authentication contract.
 
 ### 2026-03-05 - README Documentation Standard
 - Created a structured, documentation-first README.
