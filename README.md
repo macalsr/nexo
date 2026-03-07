@@ -1,551 +1,166 @@
-# Nexo Platform Documentation
+# Nexo
 
-## 1. Overview
-Nexo is composed of:
-- Backend API (`Spring Boot`, Java 21)
-- Frontend app (`React + Vite`, mobile-first PWA foundation)
+Nexo is a full-stack authentication foundation built with a Spring Boot API and a React frontend.
 
-This repository now validates both backend reliability and mobile-first installability early.
+## Why this project exists
+Nexo demonstrates a portfolio-ready baseline for user authentication with clear architecture boundaries, predictable API behavior, and a frontend flow that works end to end.
 
-## 2. Tech Stack
+## Tech stack
+
 ### Backend
 - Java 21
 - Spring Boot 4.0.3
-- Spring Web MVC
+- Spring Web MVC + Validation
 - Spring Data JPA
 - Flyway
-- PostgreSQL 15 (Docker)
+- PostgreSQL (local via Docker)
+- H2 (tests)
 - Maven Wrapper (`./mvnw`)
 
 ### Frontend
 - React 19 + TypeScript
-- Vite 6.4.1
+- Vite 6
 - React Router DOM
+- Vitest + Testing Library
 - PWA manifest + service worker
 
-## 3. Repository Structure
-```text
-.github/workflows/
-└── ci.yml
+## Getting started
 
-docker/
-└── docker-compose.yml
-
-frontend/
-|-- src/
-|   |-- config/env.ts
-|   |-- pages/LoginPage.tsx
-|   |-- pages/AppPage.tsx
-|   `-- ...
-|-- public/
-|   |-- manifest.webmanifest
-|   |-- sw.js
-|   `-- icons/
-`-- .env.example
-
-src/main/java/com/mariaribeiro/nexo
-+-- NexoApplication.java
-+-- adapters/in/rest/HealthController.java
-+-- identity/application/...
-+-- identity/domain/...
-+-- identity/adapters/in/rest/...
-+-- identity/adapters/out/...
-+-- identity/infrastructure/config/...
-
-src/main/resources
-+-- application.properties
-+-- application-local.properties
-+-- db/migration/V1__create_app_metadata.sql
-+-- db/migration/V2__create_users_table.sql
-```
-## 4. Local Development
-### 4.1 Backend prerequisites
+### Prerequisites
 - JDK 21
 - Docker + Docker Compose
+- Node.js + npm
 
-### 4.2 Start backend database
+### 1. Start PostgreSQL
 ```bash
 docker compose -f docker/docker-compose.yml up -d postgres
 ```
 
-### 4.3 Run backend
+### 2. Run backend
 ```bash
 ./mvnw spring-boot:run
 ```
 
-### 4.4 Run frontend
+Backend URL: `http://localhost:8080`
+
+### 3. Run frontend
 ```bash
 cd frontend
 npm install
 npm run dev
 ```
 
-Frontend default URL: `http://localhost:5173`
+Frontend URL: `http://localhost:5173`
 
-## 5. Backend Configuration
-### 5.1 `local` profile
-File: `src/main/resources/application-local.properties`
-- `DB_HOST` (default `localhost`)
-- `DB_PORT` (default `5432`)
-- `DB_NAME` (default `nexo`)
-- `DB_USER` (default `nexo`)
-- `DB_PASSWORD` (default `nexo`)
-- `APP_WEB_CORS_ALLOWED_ORIGINS` (default `http://localhost:5173`)
-- `APP_AUTH_JWT_SECRET` (default local development secret in `application.properties`)
-- `APP_AUTH_JWT_ACCESS_TOKEN_TTL` (default `PT24H`)
-- `APP_AUTH_PASSWORD_RESET_TOKEN_TTL` (default `PT15M`)
-- `APP_AUTH_EMAIL_VERIFICATION_TOKEN_TTL` (default `PT24H`)
+## Useful commands
 
-### 5.2 Test profile
-File: `src/test/resources/application.properties`
-- Defaults to H2
-- Can target PostgreSQL through `TEST_DB_*` and `TEST_FLYWAY_*`
-
-## 6. Frontend Configuration
-File: `frontend/.env.example`
-- `VITE_API_BASE_URL=http://localhost:8080`
-
-Usage:
-- Vite injects values from `.env` files into `import.meta.env`
-- App reads this from `src/config/env.ts`
-
-## 7. Backend API Contract
-### 7.1 Health
-- Method: `GET`
-- Path: `/health`
-- Public endpoint (no auth)
-- Response: `200 OK` JSON
-  - `status`: `UP`
-  - `service`: `nexo-api`
-  - `timestamp`: ISO-8601 UTC datetime
-
-Example:
-```bash
-curl -i http://localhost:8080/health
-```
-
-### 7.2 Login
-- Method: `POST`
-- Path: `/auth/login`
-- Public endpoint
-- Request body:
-  - `email`
-  - `password`
-- Success response: `200 OK` JSON
-  - `accessToken`
-  - `expiresAt`
-- Failure response: `401 Unauthorized` JSON
-  - `message`: `Invalid credentials`
-
-Token policy:
-- Access tokens are signed JWTs.
-- Default expiration is `24 hours` (`PT24H`).
-- Expired tokens are rejected by the token validation service.
-
-Example:
-```bash
-curl -i -X POST http://localhost:8080/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"email":"person@example.com","password":"secret123"}'
-```
-
-### 7.3 Signup
-- Method: `POST`
-- Path: `/auth/signup`
-- Public endpoint
-- Request body:
-  - `email`
-  - `password`
-- Validation:
-  - `email` must be present and a valid email address
-  - `password` must be present and at least `8` characters
-- Email normalization rule:
-  - the backend normalizes accepted emails by trimming whitespace and converting to lowercase with `Locale.ROOT` before persistence and token issuance
-- Success response strategy:
-  - Option B
-  - returns `201 Created` JSON with `accessToken` and `expiresAt`
-  - automatically authenticates the newly created user
-- Failure responses:
-  - `400 Bad Request` with `message` and field-level `errors`
-  - `409 Conflict` with the generic message `Unable to create account` when the normalized email already exists
-- Side effects:
-  - creates the account as email-unverified
-  - issues an email verification token and sends it through the current delivery stub
-
-Example:
-```bash
-curl -i -X POST http://localhost:8080/auth/signup \
-  -H "Content-Type: application/json" \
-  -d '{"email":"person@example.com","password":"secret123"}'
-```
-
-### 7.4 Email Verification
-- Verification state:
-  - stored on the user record as `email_verified`
-  - exposed to the frontend through `GET /me`
-- MVP policy:
-  - unverified users may still log in and enter `/app`
-  - the app shell must show verification state and expose a resend action
-  - future higher-risk features can gate on `emailVerified` when needed
-
-#### 7.4.1 Verify Email
-- Method: `POST`
-- Path: `/auth/verify-email?token=...`
-- Public endpoint
-- Query parameter:
-  - `token`
-- Success response: `204 No Content`
-- Failure response: `400 Bad Request`
-  - `message`: `Invalid verification token`
-- Behavior:
-  - token must exist and not be expired
-  - successful verification marks the user as verified and invalidates the token
-  - the token is single-use
-
-#### 7.4.2 Resend Verification Email
-- Method: `POST`
-- Path: `/auth/resend-verification`
-- Protected endpoint
-- Requires `Authorization: Bearer <access-token>`
-- Success response: `202 Accepted`
-  - `message`: `Check your email`
-- Behavior:
-  - returns the same generic response
-  - if the user is already verified, the endpoint remains safely idempotent
-  - issuing a new verification token replaces prior outstanding verification tokens for that user
-  - delivery is currently stubbed
-
-### 7.5 Forgot Password Request
-- Method: `POST`
-- Path: `/auth/forgot-password`
-- Public endpoint
-- Request body:
-  - `email`
-- Validation:
-  - `email` must be present and a valid email address
-- Success response: `202 Accepted` JSON
-  - `message`: `Check your email`
-- Privacy behavior:
-  - returns the same success response whether the email exists or not
-  - does not expose account existence in the API or frontend flow
-- Reset-token behavior:
-  - creates a password reset token only when the normalized email matches an existing user
-  - stores the token with an expiration timestamp
-  - default expiration is `15 minutes` (`PT15M`)
-  - email delivery is currently stubbed; no real provider is called yet
-
-Example:
-```bash
-curl -i -X POST http://localhost:8080/auth/forgot-password \
-  -H "Content-Type: application/json" \
-  -d '{"email":"person@example.com"}'
-```
-
-### 7.6 Reset Password Completion
-- Method: `POST`
-- Path: `/auth/reset-password`
-- Public endpoint
-- Request body:
-  - `token`
-  - `newPassword`
-- Validation:
-  - `token` must be present
-  - `newPassword` must be present and at least `8` characters
-- Success response: `204 No Content`
-- Security behavior:
-  - accepts only valid, non-expired reset tokens
-  - updates the stored password hash, never the raw password
-  - invalidates the reset token on success so it cannot be reused
-  - returns the same generic `400 Bad Request` message for invalid and expired tokens
-- Session revocation:
-  - existing JWT access tokens are not revoked by this endpoint in the current architecture
-  - the current auth model is stateless JWT without a server-side session store or token versioning
-  - recommended follow-up is token versioning or a revocation store if immediate session invalidation becomes a requirement
-
-Example:
-```bash
-curl -i -X POST http://localhost:8080/auth/reset-password \
-  -H "Content-Type: application/json" \
-  -d '{"token":"reset-token-value","newPassword":"secret1234"}'
-```
-
-### 7.7 Authenticated Identity
-- Method: `GET`
-- Path: `/me`
-- Protected endpoint
-- Requires `Authorization: Bearer <access-token>`
-- Success response: `200 OK` JSON
-  - `userId`
-  - `email`
-  - `emailVerified`
-- Failure response: `401 Unauthorized` JSON
-  - `message`: `Unauthorized`
-
-Authentication enforcement:
-- `/health` remains public.
-- `/auth/login` remains public.
-- `/auth/verify-email` remains public.
-- `/auth/forgot-password` remains public.
-- `/auth/reset-password` remains public.
-- Protected routes reject missing, invalid, and expired tokens with the same generic `401` response.
-- Browser CORS preflight requests (`OPTIONS`) for protected routes are allowed without authentication so authenticated frontend calls can complete.
-- Valid tokens attach authenticated user identity to the request context for downstream use.
-
-## 8. Authentication Persistence Foundation
-- Table: `users`
-- Columns:
-  - `id` (`UUID`, primary key)
-  - `email` (`VARCHAR(320)`, required, unique)
-  - `password_hash` (`VARCHAR(255)`, required)
-  - `email_verified` (`BOOLEAN`, required, defaults to `FALSE`)
-  - `email_verified_at` (`TIMESTAMP`, optional)
-  - `created_at` (`TIMESTAMP`, required, defaults to current timestamp)
-- Table: `password_reset_tokens`
-- Columns:
-  - `id` (`UUID`, primary key)
-  - `user_id` (`UUID`, required, foreign key to `users.id`)
-  - `token` (`VARCHAR(128)`, required, unique)
-  - `expires_at` (`TIMESTAMP`, required)
-  - `created_at` (`TIMESTAMP`, required)
-- Table: `email_verification_tokens`
-- Columns:
-  - `id` (`UUID`, primary key)
-  - `user_id` (`UUID`, required, foreign key to `users.id`)
-  - `token` (`VARCHAR(128)`, required, unique)
-  - `expires_at` (`TIMESTAMP`, required)
-  - `created_at` (`TIMESTAMP`, required)
-
-Email normalization strategy:
-- Emails are normalized to trimmed lowercase before entering the domain model.
-- Database storage is enforced as lowercase with `CHECK (email = LOWER(email))`.
-- Uniqueness is enforced on the normalized stored value through a unique index on `email`.
-
-Why this matters:
-- This removes ambiguity around case sensitivity and keeps authentication persistence compatible with future shared-account ownership.
-
-## 9. Frontend Routes
-- `/login`: email/password login page with client-side validation and generic auth failure handling
-- `/verify-email`: verification-link landing page that consumes an email verification token
-- `/forgot-password`: email-only password reset request page with generic success feedback
-- `/signup`: email/password signup page with client-side validation and immediate authenticated access on success
-- `/app`: post-login app shell route, guarded by centralized session validation
-
-MVP auth flow:
-- Signup submits to `POST /auth/signup`
-- On valid signup, the frontend stores the returned `accessToken` and navigates directly to `/app`
-- Login submits to `POST /auth/login`
-- On success, the frontend stores `accessToken` under `nexo.accessToken` in:
-  - `localStorage` when `Remember me` is enabled
-  - `sessionStorage` when `Remember me` is disabled
-- The app redirects to `/app`
-- Signup also triggers email-verification issuance through the backend stubbed delivery flow
-- `/verify-email` submits the link token to `POST /auth/verify-email`
-- `/app` reads `emailVerified` from `GET /me` and offers `Resend verification email` when needed
-- Forgot-password submits to `POST /auth/forgot-password`
-- On accepted forgot-password requests, the frontend always shows `Check your email`
-- Reset-password submits the reset token plus a new password to `POST /auth/reset-password`
-- Successful reset invalidates the token and allows subsequent login with the new password
-- `/login` and `/signup` stay accessible even if a stale token exists in local storage; session validity is decided only by the protected route guard.
-- Session-only login uses browser `sessionStorage`, which is cleared on browser close on a best-effort basis and may vary with browser session-restore behavior.
-- `/app` exposes an explicit logout action that clears the stored token and returns the user to `/login`.
-- Visiting `/app` without a token redirects immediately to `/login`
-- Visiting `/app` with a stored token triggers `GET /me` before protected content renders
-- If `GET /me` returns `401`, the frontend clears `nexo.accessToken` and redirects to `/login`
-- While `GET /me` is in flight, the route guard renders a loading state instead of the protected page
-- On failure, the UI shows only `Invalid credentials`
-
-## 10. PWA Installability
-Implemented foundation:
-- `manifest.webmanifest` with app metadata and icons
-- service worker (`public/sw.js`) registration in `src/main.tsx`
-- standalone display mode and mobile metadata in `index.html`
-
-Validation checklist:
-- App loads in browser
-- Browser detects manifest/service worker
-- "Add to Home Screen" appears on supported mobile browsers
-
-## 11. Testing and Build
-### 11.1 Backend tests
+### Backend
 ```bash
 ./mvnw -q test
+./mvnw -q -DskipTests package
+./mvnw -q -Dtest=ClassNameTest test
 ```
 
-### 11.2 Frontend build
+### Frontend
 ```bash
 cd frontend
+npm run dev
+npm run test
 npm run build
+npm run lint
 ```
 
-### 11.3 Frontend tests
-```bash
-cd frontend
-npm test
+## Configuration
+
+### Backend
+Main files:
+- `src/main/resources/application.properties`
+- `src/main/resources/application-local.properties`
+
+Common environment variables:
+- `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`
+- `APP_WEB_CORS_ALLOWED_ORIGINS`
+- `APP_AUTH_JWT_SECRET`
+- `APP_AUTH_JWT_ACCESS_TOKEN_TTL`
+- `APP_AUTH_PASSWORD_RESET_TOKEN_TTL`
+- `APP_AUTH_EMAIL_VERIFICATION_TOKEN_TTL`
+
+### Frontend
+- `frontend/.env.example`
+- `VITE_API_BASE_URL` (default local API: `http://localhost:8080`)
+
+## API overview
+
+Public endpoints:
+- `GET /health`
+- `POST /auth/login`
+- `POST /auth/signup`
+- `POST /auth/forgot-password`
+- `POST /auth/reset-password`
+- `POST /auth/verify-email?token=...`
+
+Protected endpoints:
+- `GET /me`
+- `POST /auth/resend-verification`
+
+Authentication behavior:
+- Uses Bearer JWT tokens.
+- Protected routes return `401` for missing/invalid/expired tokens.
+- CORS preflight (`OPTIONS`) is allowed on protected routes.
+
+## Project structure
+```text
+src/main/java/com/mariaribeiro/nexo
+|-- NexoApplication.java
+|-- adapters/in/rest/
+|   `-- HealthController.java
+|-- identity/
+|   |-- domain/
+|   |-- application/
+|   |-- adapters/
+|   |   |-- in/rest/
+|   |   `-- out/
+|   `-- infrastructure/config/
+`-- infrastructure/web/
+
+frontend/
+|-- src/
+|-- public/
+`-- package.json
 ```
 
-## 12. CI
-Workflow file:
-- `.github/workflows/ci.yml`
+## Architecture (high level)
+The backend follows DDD + hexagonal architecture:
+- `domain`: core business model and rules
+- `application`: use cases and ports
+- `adapters/in`: REST controllers and request/response DTOs
+- `adapters/out`: persistence, security, and delivery integrations
+- `infrastructure`: Spring wiring and technical configuration
 
-Current CI validates backend tests with PostgreSQL + Flyway migrations.
+## Testing
+- Backend tests: `./mvnw -q test`
+- Frontend tests: `cd frontend && npm run test`
 
-## 13. Quality and Contribution Rules
-This repository enforces agent rules in `AGENTS.md`.
+## CI
+- Workflow: `.github/workflows/ci.yml`
+- CI validates backend tests with PostgreSQL + Flyway migrations.
 
-Mandatory documentation rule:
-- Every feature must update `README.md` in the same PR.
-- Feature work is incomplete if README documentation is not updated.
+## Feature updates
 
-## 14. Feature Changelog (Portfolio)
-> This section must be updated for every feature.
+### 2026-03-07 - DDD package refactor
+- Consolidated backend packages around explicit hexagonal boundaries (`application`, `domain`, `adapters`, `infrastructure`).
+- Kept endpoint behavior unchanged while improving maintainability and reviewability.
+- Why it matters: the codebase is easier to navigate and safer to extend.
 
-### 2026-03-07 - DDD Package Refactor (FOUNDATION)
-- Refactored backend package structure to align explicitly with DDD/hexagonal boundaries: `application`, `domain`, `adapters/in`, `adapters/out`, and `infrastructure/config`.
-- Moved identity REST, persistence, notification, and security adapter code from legacy `interfaces`/`infrastructure` package names into `identity/adapters/...` without changing endpoint contracts or behavior.
-- Moved health controller into `adapters/in/rest` to keep inbound HTTP adapters consistently grouped.
-- Updated backend tests to the new package structure and stabilized token-expiry assertions to be time-relative.
-- Why it matters: makes architectural intent obvious to reviewers and lowers maintenance cost by keeping dependency direction and boundaries explicit in code layout.
+### 2026-03-06 - Auth flow foundation
+- Added signup, login, email verification, forgot password, reset password, and protected identity endpoint (`/me`).
+- Added consistent validation and generic error handling for auth-sensitive flows.
+- Why it matters: the project demonstrates a complete authentication baseline.
 
-### 2026-03-06 - User Persistence Foundation (FOUNDATION)
-- Added a `users` table migration with `email`, `password_hash`, `created_at`, and UUID primary key.
-- Enforced lowercase email storage with a database check and unique index on the normalized stored value.
-- Added domain `User`, `EmailAddress`, and `PasswordHash` models to make the normalization and hashed-password contract explicit in code.
-- Added tests covering migration creation, duplicate-email rejection, and lowercase email enforcement.
-- Why it matters: establishes the minimum durable identity model needed for authentication and future shared-account ownership.
+### 2026-03-06 - Frontend auth UX foundation
+- Added route guard, session validation, remember-me behavior, and auth flows for signup/login/reset/verify.
+- Integrated API client and token handling with protected route navigation.
+- Why it matters: reviewers can run a full frontend-backend auth flow locally.
 
-### 2026-03-06 - Login Endpoint MVP (FOUNDATION)
-- Added `POST /auth/login` to validate credentials and return a signed access token with expiration metadata.
-- Implemented BCrypt password verification, a JPA-backed user lookup adapter, and JWT token issuance/validation infrastructure.
-- Standardized login failures to `401` with the generic message `Invalid credentials`.
-- Defined a default access-token expiration policy of `24 hours`.
-- Why it matters: provides the first secure session-start mechanism needed before protecting finance features behind authentication.
-
-### 2026-03-06 - Protected Route Authentication Enforcement (FOUNDATION)
-- Added centralized bearer-token enforcement for protected routes while keeping `/health` and `/auth/login` public.
-- Added `GET /me` as a minimal protected endpoint that exposes the authenticated user identity from the request context.
-- Standardized protected-route auth failures to `401` with the generic message `Unauthorized` for missing, invalid, and expired tokens.
-- Propagated authenticated user identity through the request context for future audit and workspace authorization logic.
-- Why it matters: turns token issuance into actual access control and creates the extension point for future authorization rules.
-
-### 2026-03-05 - Frontend PWA Foundation (FOUNDATION)
-- Created `frontend/` app with React + TypeScript + Vite.
-- Added placeholder routes for `/login` and `/app` with a mobile-first shell.
-- Added environment-based API URL through `VITE_API_BASE_URL`, surfaced in placeholder pages for runtime verification.
-- Added installable PWA base with manifest, icons, service worker registration, and mobile web-app metadata.
-- Why it matters: validates mobile-first runtime assumptions and installability early, preventing rework before auth and dashboard epics.
-
-### 2026-03-06 - Frontend Foundation Validation Pass (FOUNDATION)
-- Replaced the Vite starter screen with route-based placeholders for `/login` and `/app`.
-- Added explicit `src/config/env.ts` handling for `VITE_API_BASE_URL` with a local default of `http://localhost:8080`.
-- Kept the frontend installable through the existing manifest and service worker while tightening mobile metadata in `index.html`.
-- Why it matters: moves the frontend from scaffold state to a usable mobile-first foundation that can be validated locally in a browser and on mobile devices.
-
-### 2026-03-06 - Centralized Frontend HTTP Client (FOUNDATION)
-- Added a reusable HTTP client layer in `frontend/src/api/httpClient.ts` as the single entry point for backend requests.
-- Standardized error handling through an `ApiError` type and shared request pipeline.
-- Added `frontend/src/api/healthApi.ts` so feature modules call small API wrappers instead of raw HTTP primitives.
-- Prepared the client for future token injection by isolating request header construction in one place.
-- Why it matters: prevents scattered networking logic and makes future authentication changes additive instead of invasive.
-
-### 2026-03-06 - Frontend Login MVP (FOUNDATION)
-- Replaced the `/login` placeholder with a real email/password form that validates required fields and basic email format before submission.
-- Added a frontend auth API wrapper plus local token storage under `nexo.accessToken`.
-- Wired centralized bearer-token injection into the shared HTTP client and guarded `/app` behind token presence.
-- Standardized failed login UX to the generic message `Invalid credentials` without exposing backend internals.
-- Why it matters: completes the first usable session-start flow so portfolio reviewers can see the frontend and backend authentication path working end to end.
-
-### 2026-03-06 - Frontend Session Validation Guard (FOUNDATION)
-- Centralized `/app` route protection in a single guard that blocks unauthenticated access and redirects to `/login`.
-- Added frontend `GET /me` session validation before any protected content is rendered after navigation or page reload.
-- Cleared the stored access token and redirected to `/login` on `401 Unauthorized` session validation failures.
-- Added an in-guard loading state while session validation is running so the app shell never flashes before auth is confirmed.
-- Kept `/login` and `/signup` reachable even when a stale token exists, avoiding client-side route loops back to `/app`.
-- Added explicit frontend logout from `/app` so users can end a valid session without relying on token expiry or manual storage cleanup.
-- Why it matters: makes the MVP authenticated flow reliable across reloads and prevents protected UI from rendering on stale sessions.
-
-### 2026-03-06 - Frontend Route Guard Test Coverage (FOUNDATION)
-- Added Vitest + Testing Library to automate frontend route-guard verification.
-- Covered unauthenticated redirects, in-flight session validation loading UI, and stored-token invalidation on `401` from `GET /me`.
-- Added a frontend `npm test` command and shared test setup for DOM assertions.
-- Why it matters: turns the auth guard from a manual browser check into a repeatable regression safety net.
-
-### 2026-03-06 - Signup MVP (FOUNDATION)
-- Added `POST /auth/signup` with request validation, duplicate-email conflict handling, normalized email persistence, BCrypt password hashing, and `created_at` population.
-- Chose Option B: successful signup returns `201 Created` with an access token so the new user is immediately authenticated.
-- Added frontend `/signup` flow that stores the returned token and routes directly into the protected app shell.
-- Added backend and frontend automated tests covering signup success, validation failures, duplicate protection, and client navigation.
-- Why it matters: removes manual database setup friction and makes the first-time authenticated experience usable end to end.
-
-### 2026-03-05 - Setup Spring Boot + Docker + Flyway (FOUNDATION)
-- Added `local` runtime config with PostgreSQL + automatic Flyway migration.
-- Added baseline migration `V1__create_app_metadata.sql`.
-- Added Docker Compose setup for Postgres and optional API container profile.
-- Added CI workflow using PostgreSQL service and tests that verify migration output.
-- Why it matters: establishes a deterministic backend foundation that scales for future epics and demonstrates production-minded setup in portfolio reviews.
-
-### 2026-03-05 - Health Endpoint Contract (FOUNDATION)
-- Updated `GET /health` to return structured JSON for monitoring compatibility.
-- Added HTTP controller test validating `200`, JSON response type, and health fields.
-- Endpoint remains public (no authentication requirement).
-- Why it matters: improves fast runtime validation for development and future hosting checks.
-
-### 2026-03-06 - Local Frontend CORS Support (FOUNDATION)
-- Added backend CORS configuration so the local frontend origin can call API endpoints from the browser.
-- Introduced `APP_WEB_CORS_ALLOWED_ORIGINS` for environment-driven origin control, defaulting to `http://localhost:5173`.
-- Added a backend test that verifies `GET /health` responds with the expected CORS header for the frontend origin.
-- Why it matters: allows the mobile-first frontend to call the backend directly during local development without browser cross-origin failures.
-
-### 2026-03-06 - Protected Route CORS Preflight Fix (FOUNDATION)
-- Excluded browser `OPTIONS` preflight requests from bearer-token enforcement on protected endpoints such as `/me`.
-- Added backend coverage proving `/me` now answers CORS preflight requests with the expected allow-origin and allow-methods headers.
-- Why it matters: fixes authenticated frontend requests that send `Authorization` headers, which browsers preflight before calling protected APIs.
-
-### 2026-03-06 - Forgot Password Request Flow (FOUNDATION)
-- Added `POST /auth/forgot-password` with generic `202 Accepted` responses so password reset requests do not reveal whether an account exists.
-- Persisted password reset tokens with expiration metadata in the new `password_reset_tokens` table and made the TTL configurable through `APP_AUTH_PASSWORD_RESET_TOKEN_TTL` (default `PT15M`).
-- Added a frontend `/forgot-password` route linked from `/login`, with client-side email validation and the generic success message `Check your email`.
-- Stubbed delivery behind a backend port so the request flow is complete without integrating a real email provider yet.
-- Added backend and frontend automated tests covering token creation, generic responses, validation, and the new UI entry point.
-- Why it matters: establishes the first secure password-recovery request path without leaking account existence, while keeping the delivery mechanism swappable for future production integration.
-
-### 2026-03-06 - Reset Password Completion Flow (FOUNDATION)
-- Added `POST /auth/reset-password` to accept a reset token plus a new password, validate token existence and expiration, update the stored password hash, and invalidate the token after successful use.
-- Reused the existing password hashing port and password reset token persistence flow instead of introducing parallel auth logic.
-- Standardized invalid and expired reset-token failures to the same generic `400` response to avoid leaking token state details.
-- Verified that users can authenticate with the new password after reset and that reused tokens are rejected.
-- Documented the current limitation that existing JWT sessions are not revoked immediately because the architecture is stateless and has no token revocation store yet.
-- Why it matters: completes the secure password-recovery path end to end while keeping the current auth architecture honest about what it can and cannot revoke.
-
-### 2026-03-06 - Email Verification Flow (FOUNDATION)
-- Added durable email-verification state on users plus a dedicated `email_verification_tokens` table with expiration metadata.
-- Added `POST /auth/verify-email?token=...` for single-use token consumption and `POST /auth/resend-verification` for authenticated resend requests.
-- Kept the MVP policy lightweight: unverified users can still log in, while `/app` now reflects verification state and exposes a resend action.
-- Extended `GET /me` to return `emailVerified`, enabling the frontend to reflect account state without extra bespoke endpoints.
-- Stubbed verification delivery behind a port so the flow remains easy to swap to a real provider later.
-- Added backend and frontend automated tests covering verification, resend, state reflection, and token consumption.
-- Why it matters: improves account integrity and recovery readiness without overcomplicating a still-MVP authentication architecture.
-
-### 2026-03-06 - Frontend Remember Me Option (FOUNDATION)
-- Added a `Remember me` toggle to the login flow so users can choose persistent or session-only token storage.
-- Successful login now stores `nexo.accessToken` in `localStorage` when remembered and in `sessionStorage` otherwise.
-- Documented the browser-storage limitation that session-only persistence clears on browser close on a best-effort basis.
-- Added focused frontend tests covering storage selection and login-form behavior.
-- Why it matters: makes session persistence explicit and predictable without changing the backend authentication contract.
-
-### 2026-03-05 - README Documentation Standard
-- Created a structured, documentation-first README.
-- Added clear operational sections (setup, run, tests, API contract, configuration).
-- Why it matters: improves technical communication and makes the project reviewable for portfolio and hiring contexts.
-
-## 15. Feature Entry Template
-Use this template in future PRs:
-
-```md
-### YYYY-MM-DD - Feature Name
-- What changed: endpoint/use case/domain behavior.
-- API contract: method/path/request/response.
-- Operational impact: setup, env vars, migrations, or commands changed.
-- Testing: what was added/updated.
-- Why it matters: portfolio-oriented outcome in one sentence.
-```
-
+## Notes for contributors
+This repo uses agent guardrails in `AGENTS.md`. When feature work changes onboarding, setup, behavior, or usage, update `README.md` in the same change.

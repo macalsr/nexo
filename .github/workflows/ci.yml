@@ -38,7 +38,21 @@ jobs:
       - name: Make Maven wrapper executable
         run: chmod +x mvnw
 
+      - name: Wait for PostgreSQL readiness
+        env:
+          PGPASSWORD: nexo
+        run: |
+          for i in {1..30}; do
+            if pg_isready -h localhost -p 5432 -U nexo -d nexo; then
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "PostgreSQL did not become ready in time"
+          exit 1
+
       - name: Run tests with Flyway migrations
+        timeout-minutes: 10
         env:
           TEST_DB_URL: jdbc:postgresql://localhost:5432/nexo
           TEST_DB_USER: nexo
