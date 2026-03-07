@@ -56,7 +56,7 @@ describe('ProtectedRoute', () => {
           resolveRequest = resolve
         })
     )
-    storeAccessToken('valid-token')
+    storeAccessToken('valid-token', true)
 
     renderProtectedRoute()
 
@@ -73,7 +73,7 @@ describe('ProtectedRoute', () => {
     getAuthenticatedUserMock.mockRejectedValue(
       new ApiError('Request failed with status 401', 401, 'http://localhost:8080/me')
     )
-    storeAccessToken('expired-token')
+    storeAccessToken('expired-token', true)
 
     renderProtectedRoute()
 

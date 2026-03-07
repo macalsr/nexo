@@ -65,7 +65,7 @@ export function SignupPage() {
         password: formValues.password,
       })
 
-      storeAccessToken(response.accessToken)
+      storeAccessToken(response.accessToken, true)
       navigate(redirectTo, { replace: true })
     } catch (error: unknown) {
       if (error instanceof ApiError) {
