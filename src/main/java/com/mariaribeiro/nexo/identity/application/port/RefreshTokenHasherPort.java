@@ -4,3 +4,4 @@ public interface RefreshTokenHasherPort {
 
     String hash(String rawToken);
 }
+

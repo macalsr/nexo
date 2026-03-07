@@ -36,3 +36,4 @@ public class RefreshSessionPersistenceAdapter
         refreshSessionRepository.revokeAllActiveByUserId(userId, revokedAt);
     }
 }
+

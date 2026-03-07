@@ -1,10 +1,10 @@
 package com.mariaribeiro.nexo.identity.adapters.in.rest;
 
-import com.mariaribeiro.nexo.identity.application.usecase.DuplicateEmailException;
-import com.mariaribeiro.nexo.identity.application.usecase.InvalidCredentialsException;
-import com.mariaribeiro.nexo.identity.application.usecase.InvalidEmailVerificationTokenException;
-import com.mariaribeiro.nexo.identity.application.usecase.InvalidRefreshTokenException;
-import com.mariaribeiro.nexo.identity.application.usecase.InvalidResetTokenException;
+import com.mariaribeiro.nexo.identity.application.auth.DuplicateEmailException;
+import com.mariaribeiro.nexo.identity.application.auth.InvalidCredentialsException;
+import com.mariaribeiro.nexo.identity.application.verification.InvalidEmailVerificationTokenException;
+import com.mariaribeiro.nexo.identity.application.auth.InvalidRefreshTokenException;
+import com.mariaribeiro.nexo.identity.application.recovery.InvalidResetTokenException;
 import com.mariaribeiro.nexo.identity.adapters.out.security.UnauthorizedException;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -87,3 +87,4 @@ public class AuthExceptionHandler {
         return Character.toUpperCase(parameterName.charAt(0)) + parameterName.substring(1) + " is required";
     }
 }
+

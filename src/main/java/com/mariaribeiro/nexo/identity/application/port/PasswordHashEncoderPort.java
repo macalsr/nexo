@@ -4,3 +4,4 @@ public interface PasswordHashEncoderPort {
 
     String encode(String rawPassword);
 }
+

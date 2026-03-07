@@ -10,3 +10,4 @@ public class StubPasswordResetDeliveryAdapter implements PasswordResetDeliveryPo
         //Todo Email delivery is intentionally stubbed for now.
     }
 }
+

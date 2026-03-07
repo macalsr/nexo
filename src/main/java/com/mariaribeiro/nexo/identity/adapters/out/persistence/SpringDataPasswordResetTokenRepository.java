@@ -8,3 +8,4 @@ public interface SpringDataPasswordResetTokenRepository extends JpaRepository<Pa
 
     Optional<PasswordResetTokenJpaEntity> findByToken(String token);
 }
+

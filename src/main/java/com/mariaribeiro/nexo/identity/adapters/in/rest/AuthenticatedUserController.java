@@ -1,10 +1,10 @@
 package com.mariaribeiro.nexo.identity.adapters.in.rest;
 
 import com.mariaribeiro.nexo.identity.application.port.LoadUserByEmailPort;
-import com.mariaribeiro.nexo.identity.application.usecase.AuthenticatedUserView;
-import com.mariaribeiro.nexo.identity.application.usecase.ResendVerificationEmailUseCase;
-import com.mariaribeiro.nexo.identity.adapters.out.security.AuthenticatedUserContext;
-import com.mariaribeiro.nexo.identity.adapters.out.security.AuthenticationRequestContext;
+import com.mariaribeiro.nexo.identity.application.auth.AuthenticatedUserView;
+import com.mariaribeiro.nexo.identity.application.verification.ResendVerificationEmailUseCase;
+import com.mariaribeiro.nexo.identity.adapters.in.security.AuthenticatedUserContext;
+import com.mariaribeiro.nexo.identity.adapters.in.security.AuthenticationRequestContext;
 import com.mariaribeiro.nexo.identity.adapters.out.security.UnauthorizedException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.ResponseEntity;
@@ -51,3 +51,4 @@ public class AuthenticatedUserController {
                 .body(new AuthMessageResponse("Check your email"));
     }
 }
+

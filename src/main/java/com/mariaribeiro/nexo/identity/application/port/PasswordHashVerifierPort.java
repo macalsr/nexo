@@ -4,3 +4,4 @@ public interface PasswordHashVerifierPort {
 
     boolean matches(String rawPassword, String passwordHash);
 }
+

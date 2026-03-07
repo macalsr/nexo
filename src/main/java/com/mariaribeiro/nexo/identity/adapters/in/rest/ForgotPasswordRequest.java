@@ -8,3 +8,4 @@ public record ForgotPasswordRequest(
         @Email(message = "Enter a valid email address")
         String email) {
 }
+

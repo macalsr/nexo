@@ -51,3 +51,4 @@ public class PasswordResetTokenJpaEntity {
         return new PasswordResetToken(id, userId, token, expiresAt, createdAt);
     }
 }
+

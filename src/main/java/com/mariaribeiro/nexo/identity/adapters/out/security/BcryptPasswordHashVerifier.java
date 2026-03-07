@@ -16,3 +16,4 @@ public class BcryptPasswordHashVerifier implements PasswordHashVerifierPort {
         return passwordEncoder.matches(rawPassword, passwordHash);
     }
 }
+

@@ -1,8 +1,8 @@
 package com.mariaribeiro.nexo.identity.adapters.out.security;
 
 import com.mariaribeiro.nexo.identity.application.port.TokenServicePort;
-import com.mariaribeiro.nexo.identity.application.usecase.SessionToken;
-import com.mariaribeiro.nexo.identity.application.usecase.TokenClaims;
+import com.mariaribeiro.nexo.identity.application.auth.SessionToken;
+import com.mariaribeiro.nexo.identity.application.auth.TokenClaims;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.Jwts;
@@ -64,3 +64,4 @@ public class JwtTokenService implements TokenServicePort {
         }
     }
 }
+

@@ -4,3 +4,4 @@ public interface RefreshTokenGeneratorPort {
 
     String generate();
 }
+

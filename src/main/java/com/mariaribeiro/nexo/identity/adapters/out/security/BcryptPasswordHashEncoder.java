@@ -16,3 +16,4 @@ public class BcryptPasswordHashEncoder implements PasswordHashEncoderPort {
         return passwordEncoder.encode(rawPassword);
     }
 }
+

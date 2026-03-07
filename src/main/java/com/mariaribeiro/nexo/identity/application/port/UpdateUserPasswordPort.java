@@ -6,3 +6,4 @@ public interface UpdateUserPasswordPort {
 
     void updatePassword(UUID userId, String passwordHash);
 }
+

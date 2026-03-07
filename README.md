@@ -90,6 +90,13 @@ Common environment variables:
 - `APP_AUTH_PASSWORD_RESET_TOKEN_TTL`
 - `APP_AUTH_EMAIL_VERIFICATION_TOKEN_TTL`
 
+Local-only seeded auth user:
+- Active only when the `local` profile is active.
+- Email: `local.dev@nexo.local`
+- Password: `LocalDevOnly123!`
+- Purpose: fast local login without manual DB edits.
+- The seed is idempotent and will not create duplicates.
+
 ### Frontend
 - `frontend/.env.example`
 - `VITE_API_BASE_URL` (default local API: `http://localhost:8080`)
@@ -159,6 +166,11 @@ The backend follows DDD + hexagonal architecture:
 - CI validates backend tests with PostgreSQL + Flyway migrations.
 
 ## Feature updates
+
+### 2026-03-07 - Local development seeded auth user
+- Added a development-only startup seeder for a default local login user when the `local` profile is active.
+- Kept seeding idempotent by checking existing email before insert.
+- Why it matters: developers can access auth-protected flows immediately without manual database edits.
 
 ### 2026-03-07 - Refresh token sessions and rotation
 - Added cookie-based refresh token sessions with persistence, rotation, and revocation support.

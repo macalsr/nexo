@@ -8,3 +8,4 @@ public interface DeleteEmailVerificationTokenPort {
 
     void deleteByUserId(UUID userId);
 }
+

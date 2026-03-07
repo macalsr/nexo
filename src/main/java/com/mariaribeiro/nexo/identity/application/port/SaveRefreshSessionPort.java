@@ -6,3 +6,4 @@ public interface SaveRefreshSessionPort {
 
     RefreshSession save(RefreshSession refreshSession);
 }
+

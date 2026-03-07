@@ -6,3 +6,4 @@ public interface CreatePasswordResetTokenPort {
 
     PasswordResetToken save(PasswordResetToken passwordResetToken);
 }
+

@@ -6,3 +6,4 @@ public interface DeletePasswordResetTokenPort {
 
     void deleteById(UUID id);
 }
+

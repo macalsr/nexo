@@ -21,3 +21,4 @@ public interface SpringDataRefreshSessionRepository extends JpaRepository<Refres
             """)
     int revokeAllActiveByUserId(@Param("userId") UUID userId, @Param("revokedAt") Instant revokedAt);
 }
+

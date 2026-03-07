@@ -7,3 +7,4 @@ public interface LoadPasswordResetTokenPort {
 
     Optional<PasswordResetToken> findByToken(String token);
 }
+

@@ -41,3 +41,4 @@ public class EmailVerificationTokenPersistenceAdapter
         emailVerificationTokenRepository.flush();
     }
 }
+

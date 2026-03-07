@@ -16,3 +16,4 @@ public class EmailVerificationProperties {
         this.tokenTtl = tokenTtl;
     }
 }
+

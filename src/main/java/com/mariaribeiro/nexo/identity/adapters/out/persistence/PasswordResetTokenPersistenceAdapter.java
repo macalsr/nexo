@@ -34,3 +34,4 @@ public class PasswordResetTokenPersistenceAdapter
         passwordResetTokenRepository.flush();
     }
 }
+

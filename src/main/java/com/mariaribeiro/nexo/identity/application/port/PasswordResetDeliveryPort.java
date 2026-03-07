@@ -6,3 +6,4 @@ public interface PasswordResetDeliveryPort {
 
     void deliver(String email, String token, Instant expiresAt);
 }
+

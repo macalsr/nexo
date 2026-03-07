@@ -7,3 +7,4 @@ public interface LoadEmailVerificationTokenPort {
 
     Optional<EmailVerificationToken> findByToken(String token);
 }
+

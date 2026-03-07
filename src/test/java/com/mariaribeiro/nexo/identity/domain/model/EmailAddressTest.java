@@ -21,3 +21,4 @@ class EmailAddressTest {
                 .hasMessage("email must not be blank");
     }
 }
+

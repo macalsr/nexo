@@ -72,3 +72,4 @@ class RefreshSessionTest {
                 .hasMessage("session is not active");
     }
 }
+

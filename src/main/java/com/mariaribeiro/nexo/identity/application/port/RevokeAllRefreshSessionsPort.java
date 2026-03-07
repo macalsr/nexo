@@ -7,3 +7,4 @@ public interface RevokeAllRefreshSessionsPort {
 
     void revokeAllByUserId(UUID userId, Instant revokedAt);
 }
+

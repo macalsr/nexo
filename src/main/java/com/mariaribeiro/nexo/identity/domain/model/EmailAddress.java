@@ -20,3 +20,4 @@ public record EmailAddress(String value) {
         return new EmailAddress(value);
     }
 }
+

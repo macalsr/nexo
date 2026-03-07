@@ -6,3 +6,4 @@ public interface EmailVerificationDeliveryPort {
 
     void deliver(String email, String token, Instant expiresAt);
 }
+

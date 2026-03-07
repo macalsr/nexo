@@ -4,3 +4,4 @@ import java.time.Instant;
 
 public record SignupResponse(String accessToken, Instant expiresAt) {
 }
+

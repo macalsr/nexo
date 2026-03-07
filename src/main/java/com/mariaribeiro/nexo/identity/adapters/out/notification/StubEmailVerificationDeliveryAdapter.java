@@ -10,3 +10,4 @@ public class StubEmailVerificationDeliveryAdapter implements EmailVerificationDe
         //Todo Email delivery is intentionally stubbed for now.
     }
 }
+

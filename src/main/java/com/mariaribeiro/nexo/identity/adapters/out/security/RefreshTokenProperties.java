@@ -52,3 +52,4 @@ public class RefreshTokenProperties {
         this.cookieSecure = cookieSecure;
     }
 }
+

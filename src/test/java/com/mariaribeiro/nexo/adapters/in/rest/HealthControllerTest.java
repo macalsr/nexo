@@ -50,3 +50,4 @@ class HealthControllerTest {
                 .contains("http://localhost:5173");
     }
 }
+

@@ -3,7 +3,7 @@ package com.mariaribeiro.nexo.identity.adapters.out.security;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import com.mariaribeiro.nexo.identity.application.usecase.TokenClaims;
+import com.mariaribeiro.nexo.identity.application.auth.TokenClaims;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
@@ -65,3 +65,4 @@ class JwtTokenServiceTest {
                 .hasMessage("Token invalid");
     }
 }
+

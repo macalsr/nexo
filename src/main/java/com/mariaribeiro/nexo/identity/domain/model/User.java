@@ -39,3 +39,4 @@ public record User(
                 createdAt);
     }
 }
+

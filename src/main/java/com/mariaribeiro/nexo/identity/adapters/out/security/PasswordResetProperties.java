@@ -16,3 +16,4 @@ public class PasswordResetProperties {
         this.tokenTtl = tokenTtl;
     }
 }
+

@@ -15,3 +15,4 @@ public record PasswordHash(String value) {
         return new PasswordHash(value);
     }
 }
+

@@ -10,3 +10,4 @@ public interface SpringDataEmailVerificationTokenRepository extends JpaRepositor
 
     void deleteByUserId(UUID userId);
 }
+

@@ -7,3 +7,4 @@ public interface LoadRefreshSessionByTokenHashPort {
 
     Optional<RefreshSession> findByTokenHash(String tokenHash);
 }
+

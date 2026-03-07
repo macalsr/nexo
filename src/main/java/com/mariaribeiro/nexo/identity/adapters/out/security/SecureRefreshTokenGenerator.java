@@ -15,3 +15,4 @@ public class SecureRefreshTokenGenerator implements RefreshTokenGeneratorPort {
         return Base64.getUrlEncoder().withoutPadding().encodeToString(randomBytes);
     }
 }
+

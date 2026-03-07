@@ -6,3 +6,4 @@ public interface CreateEmailVerificationTokenPort {
 
     EmailVerificationToken save(EmailVerificationToken emailVerificationToken);
 }
+

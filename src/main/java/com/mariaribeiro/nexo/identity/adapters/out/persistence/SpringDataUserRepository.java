@@ -8,3 +8,4 @@ public interface SpringDataUserRepository extends JpaRepository<UserJpaEntity, U
 
     Optional<UserJpaEntity> findByEmail(String email);
 }
+

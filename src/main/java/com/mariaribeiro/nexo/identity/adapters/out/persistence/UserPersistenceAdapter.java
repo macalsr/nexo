@@ -5,8 +5,8 @@ import com.mariaribeiro.nexo.identity.application.port.LoadUserByEmailPort;
 import com.mariaribeiro.nexo.identity.application.port.LoadUserByIdPort;
 import com.mariaribeiro.nexo.identity.application.port.MarkUserEmailVerifiedPort;
 import com.mariaribeiro.nexo.identity.application.port.UpdateUserPasswordPort;
-import com.mariaribeiro.nexo.identity.application.usecase.AuthenticatedUserView;
-import com.mariaribeiro.nexo.identity.application.usecase.DuplicateEmailException;
+import com.mariaribeiro.nexo.identity.application.auth.AuthenticatedUserView;
+import com.mariaribeiro.nexo.identity.application.auth.DuplicateEmailException;
 import com.mariaribeiro.nexo.identity.domain.model.User;
 import java.time.Instant;
 import java.util.Optional;
@@ -78,3 +78,4 @@ public class UserPersistenceAdapter
         userRepository.saveAndFlush(user);
     }
 }
+

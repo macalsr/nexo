@@ -7,3 +7,4 @@ public interface MarkUserEmailVerifiedPort {
 
     void markEmailVerified(UUID userId, Instant verifiedAt);
 }
+

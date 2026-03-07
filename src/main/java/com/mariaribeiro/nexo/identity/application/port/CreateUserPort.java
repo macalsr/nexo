@@ -6,3 +6,4 @@ public interface CreateUserPort {
 
     User create(User user);
 }
+

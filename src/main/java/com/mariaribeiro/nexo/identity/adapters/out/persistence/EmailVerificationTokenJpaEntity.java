@@ -51,3 +51,4 @@ public class EmailVerificationTokenJpaEntity {
         return new EmailVerificationToken(id, userId, token, expiresAt, createdAt);
     }
 }
+
