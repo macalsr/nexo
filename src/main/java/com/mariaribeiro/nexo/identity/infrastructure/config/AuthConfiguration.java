@@ -7,12 +7,18 @@ import com.mariaribeiro.nexo.identity.application.port.DeleteEmailVerificationTo
 import com.mariaribeiro.nexo.identity.application.port.DeletePasswordResetTokenPort;
 import com.mariaribeiro.nexo.identity.application.port.EmailVerificationDeliveryPort;
 import com.mariaribeiro.nexo.identity.application.port.LoadEmailVerificationTokenPort;
+import com.mariaribeiro.nexo.identity.application.port.LoadRefreshSessionByTokenHashPort;
 import com.mariaribeiro.nexo.identity.application.port.LoadUserByEmailPort;
+import com.mariaribeiro.nexo.identity.application.port.LoadUserByIdPort;
 import com.mariaribeiro.nexo.identity.application.port.LoadPasswordResetTokenPort;
 import com.mariaribeiro.nexo.identity.application.port.MarkUserEmailVerifiedPort;
 import com.mariaribeiro.nexo.identity.application.port.PasswordHashEncoderPort;
 import com.mariaribeiro.nexo.identity.application.port.PasswordHashVerifierPort;
 import com.mariaribeiro.nexo.identity.application.port.PasswordResetDeliveryPort;
+import com.mariaribeiro.nexo.identity.application.port.RefreshTokenGeneratorPort;
+import com.mariaribeiro.nexo.identity.application.port.RefreshTokenHasherPort;
+import com.mariaribeiro.nexo.identity.application.port.RevokeAllRefreshSessionsPort;
+import com.mariaribeiro.nexo.identity.application.port.SaveRefreshSessionPort;
 import com.mariaribeiro.nexo.identity.application.port.TokenServicePort;
 import com.mariaribeiro.nexo.identity.application.port.UpdateUserPasswordPort;
 import com.mariaribeiro.nexo.identity.application.usecase.ForgotPasswordService;
@@ -21,6 +27,13 @@ import com.mariaribeiro.nexo.identity.application.usecase.IssueEmailVerification
 import com.mariaribeiro.nexo.identity.application.usecase.IssueEmailVerificationUseCase;
 import com.mariaribeiro.nexo.identity.application.usecase.LoginService;
 import com.mariaribeiro.nexo.identity.application.usecase.LoginUseCase;
+import com.mariaribeiro.nexo.identity.application.usecase.LogoutAllService;
+import com.mariaribeiro.nexo.identity.application.usecase.LogoutAllUseCase;
+import com.mariaribeiro.nexo.identity.application.usecase.LogoutService;
+import com.mariaribeiro.nexo.identity.application.usecase.LogoutUseCase;
+import com.mariaribeiro.nexo.identity.application.usecase.RefreshSessionManager;
+import com.mariaribeiro.nexo.identity.application.usecase.RefreshSessionService;
+import com.mariaribeiro.nexo.identity.application.usecase.RefreshSessionUseCase;
 import com.mariaribeiro.nexo.identity.application.usecase.ResendVerificationEmailService;
 import com.mariaribeiro.nexo.identity.application.usecase.ResendVerificationEmailUseCase;
 import com.mariaribeiro.nexo.identity.application.usecase.ResetPasswordService;
@@ -33,8 +46,10 @@ import com.mariaribeiro.nexo.identity.adapters.out.notification.StubEmailVerific
 import com.mariaribeiro.nexo.identity.adapters.out.notification.StubPasswordResetDeliveryAdapter;
 import com.mariaribeiro.nexo.identity.adapters.out.persistence.EmailVerificationTokenPersistenceAdapter;
 import com.mariaribeiro.nexo.identity.adapters.out.persistence.PasswordResetTokenPersistenceAdapter;
+import com.mariaribeiro.nexo.identity.adapters.out.persistence.RefreshSessionPersistenceAdapter;
 import com.mariaribeiro.nexo.identity.adapters.out.persistence.SpringDataEmailVerificationTokenRepository;
 import com.mariaribeiro.nexo.identity.adapters.out.persistence.SpringDataPasswordResetTokenRepository;
+import com.mariaribeiro.nexo.identity.adapters.out.persistence.SpringDataRefreshSessionRepository;
 import com.mariaribeiro.nexo.identity.adapters.out.persistence.SpringDataUserRepository;
 import com.mariaribeiro.nexo.identity.adapters.out.persistence.UserPersistenceAdapter;
 import com.mariaribeiro.nexo.identity.adapters.out.security.AuthenticationRequestContext;
@@ -45,6 +60,9 @@ import com.mariaribeiro.nexo.identity.adapters.out.security.BcryptPasswordHashVe
 import com.mariaribeiro.nexo.identity.adapters.out.security.EmailVerificationProperties;
 import com.mariaribeiro.nexo.identity.adapters.out.security.JwtTokenService;
 import com.mariaribeiro.nexo.identity.adapters.out.security.PasswordResetProperties;
+import com.mariaribeiro.nexo.identity.adapters.out.security.RefreshTokenProperties;
+import com.mariaribeiro.nexo.identity.adapters.out.security.SecureRefreshTokenGenerator;
+import com.mariaribeiro.nexo.identity.adapters.out.security.Sha256RefreshTokenHasher;
 import java.time.Clock;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -57,7 +75,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 @EnableConfigurationProperties({
         AuthTokenProperties.class,
         PasswordResetProperties.class,
-        EmailVerificationProperties.class
+        EmailVerificationProperties.class,
+        RefreshTokenProperties.class
 })
 public class AuthConfiguration {
 
@@ -89,7 +108,18 @@ public class AuthConfiguration {
     }
 
     @Bean
+    RefreshSessionPersistenceAdapter refreshSessionPersistenceAdapter(
+            SpringDataRefreshSessionRepository refreshSessionRepository) {
+        return new RefreshSessionPersistenceAdapter(refreshSessionRepository);
+    }
+
+    @Bean
     LoadUserByEmailPort loadUserByEmailPort(UserPersistenceAdapter userPersistenceAdapter) {
+        return userPersistenceAdapter;
+    }
+
+    @Bean
+    LoadUserByIdPort loadUserByIdPort(UserPersistenceAdapter userPersistenceAdapter) {
         return userPersistenceAdapter;
     }
 
@@ -145,6 +175,23 @@ public class AuthConfiguration {
     }
 
     @Bean
+    SaveRefreshSessionPort saveRefreshSessionPort(RefreshSessionPersistenceAdapter refreshSessionPersistenceAdapter) {
+        return refreshSessionPersistenceAdapter;
+    }
+
+    @Bean
+    LoadRefreshSessionByTokenHashPort loadRefreshSessionByTokenHashPort(
+            RefreshSessionPersistenceAdapter refreshSessionPersistenceAdapter) {
+        return refreshSessionPersistenceAdapter;
+    }
+
+    @Bean
+    RevokeAllRefreshSessionsPort revokeAllRefreshSessionsPort(
+            RefreshSessionPersistenceAdapter refreshSessionPersistenceAdapter) {
+        return refreshSessionPersistenceAdapter;
+    }
+
+    @Bean
     PasswordHashEncoderPort passwordHashEncoderPort(PasswordEncoder passwordEncoder) {
         return new BcryptPasswordHashEncoder(passwordEncoder);
     }
@@ -157,6 +204,35 @@ public class AuthConfiguration {
     @Bean
     TokenServicePort tokenServicePort(Clock authClock, AuthTokenProperties properties) {
         return new JwtTokenService(authClock, properties);
+    }
+
+    @Bean
+    RefreshTokenGeneratorPort refreshTokenGeneratorPort() {
+        return new SecureRefreshTokenGenerator();
+    }
+
+    @Bean
+    RefreshTokenHasherPort refreshTokenHasherPort() {
+        return new Sha256RefreshTokenHasher();
+    }
+
+    @Bean
+    RefreshSessionManager refreshSessionManager(
+            SaveRefreshSessionPort saveRefreshSessionPort,
+            LoadRefreshSessionByTokenHashPort loadRefreshSessionByTokenHashPort,
+            RevokeAllRefreshSessionsPort revokeAllRefreshSessionsPort,
+            RefreshTokenGeneratorPort refreshTokenGeneratorPort,
+            RefreshTokenHasherPort refreshTokenHasherPort,
+            Clock authClock,
+            RefreshTokenProperties refreshTokenProperties) {
+        return new RefreshSessionManager(
+                saveRefreshSessionPort,
+                loadRefreshSessionByTokenHashPort,
+                revokeAllRefreshSessionsPort,
+                refreshTokenGeneratorPort,
+                refreshTokenHasherPort,
+                authClock,
+                refreshTokenProperties.getTtl());
     }
 
     @Bean
@@ -189,8 +265,9 @@ public class AuthConfiguration {
     LoginUseCase loginUseCase(
             LoadUserByEmailPort loadUserByEmailPort,
             PasswordHashVerifierPort passwordHashVerifierPort,
-            TokenServicePort tokenServicePort) {
-        return new LoginService(loadUserByEmailPort, passwordHashVerifierPort, tokenServicePort);
+            TokenServicePort tokenServicePort,
+            RefreshSessionManager refreshSessionManager) {
+        return new LoginService(loadUserByEmailPort, passwordHashVerifierPort, tokenServicePort, refreshSessionManager);
     }
 
     @Bean
@@ -199,13 +276,33 @@ public class AuthConfiguration {
             PasswordHashEncoderPort passwordHashEncoderPort,
             TokenServicePort tokenServicePort,
             IssueEmailVerificationUseCase issueEmailVerificationUseCase,
+            RefreshSessionManager refreshSessionManager,
             Clock authClock) {
         return new SignupService(
                 createUserPort,
                 passwordHashEncoderPort,
                 tokenServicePort,
                 issueEmailVerificationUseCase,
+                refreshSessionManager,
                 authClock);
+    }
+
+    @Bean
+    RefreshSessionUseCase refreshSessionUseCase(
+            RefreshSessionManager refreshSessionManager,
+            LoadUserByIdPort loadUserByIdPort,
+            TokenServicePort tokenServicePort) {
+        return new RefreshSessionService(refreshSessionManager, loadUserByIdPort, tokenServicePort);
+    }
+
+    @Bean
+    LogoutUseCase logoutUseCase(RefreshSessionManager refreshSessionManager) {
+        return new LogoutService(refreshSessionManager);
+    }
+
+    @Bean
+    LogoutAllUseCase logoutAllUseCase(RefreshSessionManager refreshSessionManager) {
+        return new LogoutAllService(refreshSessionManager);
     }
 
     @Bean

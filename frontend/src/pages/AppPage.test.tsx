@@ -59,7 +59,7 @@ describe('AppPage', () => {
   })
 
   it('logs out by clearing the token and navigating to /login', async () => {
-    storeAccessToken('active-token')
+    storeAccessToken('active-token', true)
 
     renderAppPage()
 

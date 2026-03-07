@@ -3,6 +3,7 @@ package com.mariaribeiro.nexo.identity.adapters.in.rest;
 import com.mariaribeiro.nexo.identity.application.usecase.DuplicateEmailException;
 import com.mariaribeiro.nexo.identity.application.usecase.InvalidCredentialsException;
 import com.mariaribeiro.nexo.identity.application.usecase.InvalidEmailVerificationTokenException;
+import com.mariaribeiro.nexo.identity.application.usecase.InvalidRefreshTokenException;
 import com.mariaribeiro.nexo.identity.application.usecase.InvalidResetTokenException;
 import com.mariaribeiro.nexo.identity.adapters.out.security.UnauthorizedException;
 import java.util.LinkedHashMap;
@@ -39,6 +40,12 @@ public class AuthExceptionHandler {
     public ResponseEntity<AuthErrorResponse> handleInvalidResetToken(InvalidResetTokenException exception) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(new AuthErrorResponse("Invalid reset token"));
+    }
+
+    @ExceptionHandler(InvalidRefreshTokenException.class)
+    public ResponseEntity<AuthErrorResponse> handleInvalidRefreshToken(InvalidRefreshTokenException exception) {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(new AuthErrorResponse("Invalid refresh token"));
     }
 
     @ExceptionHandler(InvalidEmailVerificationTokenException.class)

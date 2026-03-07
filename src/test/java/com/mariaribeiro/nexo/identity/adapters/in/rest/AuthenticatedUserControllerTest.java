@@ -52,6 +52,7 @@ class AuthenticatedUserControllerTest {
     void cleanUsers() throws Exception {
         try (Connection connection = dataSource.getConnection();
              Statement statement = connection.createStatement()) {
+            statement.executeUpdate("DELETE FROM refresh_sessions");
             statement.executeUpdate("DELETE FROM email_verification_tokens");
             statement.executeUpdate("DELETE FROM users");
         }
@@ -95,7 +96,7 @@ class AuthenticatedUserControllerTest {
         Map<String, Object> responseBody = objectMapper.readValue(response.body(), Map.class);
 
         assertThat(response.statusCode()).isEqualTo(401);
-        assertThat(responseBody).containsEntry("message", "Unauthorized");
+        assertThat(responseBody).containsEntry("message", "Access token expired");
     }
 
     @Test

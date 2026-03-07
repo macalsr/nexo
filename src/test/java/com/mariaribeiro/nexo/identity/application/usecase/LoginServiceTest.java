@@ -18,10 +18,12 @@ class LoginServiceTest {
     private final LoadUserByEmailPort loadUserByEmailPort = mock(LoadUserByEmailPort.class);
     private final PasswordHashVerifierPort passwordHashVerifierPort = mock(PasswordHashVerifierPort.class);
     private final TokenServicePort tokenServicePort = mock(TokenServicePort.class);
+    private final RefreshSessionManager refreshSessionManager = mock(RefreshSessionManager.class);
     private final LoginService loginService = new LoginService(
             loadUserByEmailPort,
             passwordHashVerifierPort,
-            tokenServicePort);
+            tokenServicePort,
+            refreshSessionManager);
 
     @Test
     void returnsTokenForValidCredentials() {
@@ -40,11 +42,13 @@ class LoginServiceTest {
         when(passwordHashVerifierPort.matches("secret123", user.passwordHash())).thenReturn(true);
         when(tokenServicePort.issueToken(userId, "person@example.com"))
                 .thenReturn(new SessionToken("token-value", expiresAt));
+        when(refreshSessionManager.issue(userId)).thenReturn("refresh-token-value");
 
         LoginResult result = loginService.login(new LoginCommand("Person@Example.com", "secret123"));
 
         assertThat(result.accessToken()).isEqualTo("token-value");
         assertThat(result.expiresAt()).isEqualTo(expiresAt);
+        assertThat(result.refreshToken()).isEqualTo("refresh-token-value");
     }
 
     @Test

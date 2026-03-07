@@ -2,6 +2,7 @@ package com.mariaribeiro.nexo.identity.adapters.out.persistence;
 
 import com.mariaribeiro.nexo.identity.application.port.CreateUserPort;
 import com.mariaribeiro.nexo.identity.application.port.LoadUserByEmailPort;
+import com.mariaribeiro.nexo.identity.application.port.LoadUserByIdPort;
 import com.mariaribeiro.nexo.identity.application.port.MarkUserEmailVerifiedPort;
 import com.mariaribeiro.nexo.identity.application.port.UpdateUserPasswordPort;
 import com.mariaribeiro.nexo.identity.application.usecase.AuthenticatedUserView;
@@ -13,7 +14,7 @@ import java.util.UUID;
 import org.springframework.dao.DataIntegrityViolationException;
 
 public class UserPersistenceAdapter
-        implements LoadUserByEmailPort, CreateUserPort, UpdateUserPasswordPort, MarkUserEmailVerifiedPort {
+        implements LoadUserByEmailPort, LoadUserByIdPort, CreateUserPort, UpdateUserPasswordPort, MarkUserEmailVerifiedPort {
 
     private final SpringDataUserRepository userRepository;
 
@@ -24,6 +25,18 @@ public class UserPersistenceAdapter
     @Override
     public Optional<AuthenticatedUserView> findByEmail(String normalizedEmail) {
         return userRepository.findByEmail(normalizedEmail)
+                .map(user -> new AuthenticatedUserView(
+                        user.getId(),
+                        user.getEmail(),
+                        user.getPasswordHash(),
+                        user.isEmailVerified(),
+                        user.getEmailVerifiedAt(),
+                        user.getCreatedAt()));
+    }
+
+    @Override
+    public Optional<AuthenticatedUserView> findById(UUID userId) {
+        return userRepository.findById(userId)
                 .map(user -> new AuthenticatedUserView(
                         user.getId(),
                         user.getEmail(),

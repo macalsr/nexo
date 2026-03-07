@@ -43,6 +43,18 @@ export function resendVerificationEmail(signal?: AbortSignal) {
   return httpClient.post<ResendVerificationResponse>('/auth/resend-verification', undefined, { signal })
 }
 
+export function refreshSession(signal?: AbortSignal) {
+  return httpClient.post<LoginResponse>('/auth/refresh', undefined, { signal })
+}
+
+export function logout(signal?: AbortSignal) {
+  return httpClient.post<void>('/auth/logout', undefined, { signal })
+}
+
+export function logoutAll(signal?: AbortSignal) {
+  return httpClient.post<void>('/auth/logout-all', undefined, { signal })
+}
+
 export function verifyEmail(token: string, signal?: AbortSignal) {
   return httpClient.post<void>('/auth/verify-email', { token }, { signal })
 }

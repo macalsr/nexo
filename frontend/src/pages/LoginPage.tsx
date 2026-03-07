@@ -149,12 +149,6 @@ export function LoginPage() {
             <span>Remember me</span>
           </label>
 
-          <p className="field-hint">
-            Keep this enabled to stay signed in after restarting the browser. If
-            disabled, the session is cleared on browser close on a best-effort
-            basis.
-          </p>
-
           {errorMessage ? (
             <p className="form-error" role="alert">
               {errorMessage}

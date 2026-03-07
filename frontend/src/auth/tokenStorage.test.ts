@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { clearAccessToken, getAccessToken, storeAccessToken } from './tokenStorage'
+import { clearAccessToken, getAccessToken, replaceAccessToken, storeAccessToken } from './tokenStorage'
 
 describe('tokenStorage', () => {
   beforeEach(() => {
@@ -32,5 +32,23 @@ describe('tokenStorage', () => {
     expect(window.localStorage.getItem('nexo.accessToken')).toBeNull()
     expect(window.sessionStorage.getItem('nexo.accessToken')).toBeNull()
     expect(getAccessToken()).toBeNull()
+  })
+
+  it('replaces token in localStorage when session is remembered', () => {
+    storeAccessToken('old-token', true)
+
+    replaceAccessToken('new-token')
+
+    expect(window.localStorage.getItem('nexo.accessToken')).toBe('new-token')
+    expect(window.sessionStorage.getItem('nexo.accessToken')).toBeNull()
+  })
+
+  it('replaces token in sessionStorage when session is not remembered', () => {
+    storeAccessToken('old-token', false)
+
+    replaceAccessToken('new-token')
+
+    expect(window.sessionStorage.getItem('nexo.accessToken')).toBe('new-token')
+    expect(window.localStorage.getItem('nexo.accessToken')).toBeNull()
   })
 })

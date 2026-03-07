@@ -30,6 +30,9 @@ public class BearerTokenAuthenticationFilter extends OncePerRequestFilter {
                 || path.equals("/health")
                 || path.equals("/auth/login")
                 || path.equals("/auth/signup")
+                || path.equals("/auth/refresh")
+                || path.equals("/auth/logout")
+                || path.equals("/auth/logout-all")
                 || path.equals("/auth/forgot-password")
                 || path.equals("/auth/reset-password")
                 || path.equals("/auth/verify-email")
@@ -43,13 +46,13 @@ public class BearerTokenAuthenticationFilter extends OncePerRequestFilter {
             FilterChain filterChain) throws ServletException, IOException {
         String authorizationHeader = request.getHeader("Authorization");
         if (authorizationHeader == null || !authorizationHeader.startsWith("Bearer ")) {
-            writeUnauthorizedResponse(response);
+            writeUnauthorizedResponse(response, "Unauthorized");
             return;
         }
 
         String token = authorizationHeader.substring("Bearer ".length()).trim();
         if (token.isBlank()) {
-            writeUnauthorizedResponse(response);
+            writeUnauthorizedResponse(response, "Unauthorized");
             return;
         }
 
@@ -60,13 +63,17 @@ public class BearerTokenAuthenticationFilter extends OncePerRequestFilter {
                     new AuthenticatedUserContext(tokenClaims.userId(), tokenClaims.email()));
             filterChain.doFilter(request, response);
         } catch (InvalidTokenException exception) {
-            writeUnauthorizedResponse(response);
+            if ("Token expired".equals(exception.getMessage())) {
+                writeUnauthorizedResponse(response, "Access token expired");
+                return;
+            }
+            writeUnauthorizedResponse(response, "Unauthorized");
         }
     }
 
-    private void writeUnauthorizedResponse(HttpServletResponse response) throws IOException {
+    private void writeUnauthorizedResponse(HttpServletResponse response, String message) throws IOException {
         response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-        response.getWriter().write("{\"message\":\"Unauthorized\"}");
+        response.getWriter().write("{\"message\":\"" + message + "\"}");
     }
 }

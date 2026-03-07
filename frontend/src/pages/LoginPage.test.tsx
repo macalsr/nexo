@@ -46,17 +46,17 @@ describe('LoginPage', () => {
     expect(screen.queryByText('Protected app content')).not.toBeInTheDocument()
   })
 
-  it('shows the remember me toggle and persistence hint', () => {
+  it('shows the remember me toggle enabled by default', () => {
     renderLoginPage()
 
     expect(screen.getByRole('checkbox', { name: 'Remember me' })).toBeChecked()
-    expect(
-      screen.getByText(/stay signed in after restarting the browser/i)
-    ).toBeInTheDocument()
   })
 
   it('stores the session in sessionStorage when remember me is disabled', async () => {
-    loginMock.mockResolvedValue({ accessToken: 'session-only-token' })
+    loginMock.mockResolvedValue({
+      accessToken: 'session-only-token',
+      expiresAt: '2026-03-07T18:00:00Z',
+    })
 
     renderLoginPage()
 

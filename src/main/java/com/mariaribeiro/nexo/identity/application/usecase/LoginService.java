@@ -10,14 +10,17 @@ public class LoginService implements LoginUseCase {
     private final LoadUserByEmailPort loadUserByEmailPort;
     private final PasswordHashVerifierPort passwordHashVerifierPort;
     private final TokenServicePort tokenServicePort;
+    private final RefreshSessionManager refreshSessionManager;
 
     public LoginService(
             LoadUserByEmailPort loadUserByEmailPort,
             PasswordHashVerifierPort passwordHashVerifierPort,
-            TokenServicePort tokenServicePort) {
+            TokenServicePort tokenServicePort,
+            RefreshSessionManager refreshSessionManager) {
         this.loadUserByEmailPort = loadUserByEmailPort;
         this.passwordHashVerifierPort = passwordHashVerifierPort;
         this.tokenServicePort = tokenServicePort;
+        this.refreshSessionManager = refreshSessionManager;
     }
 
     @Override
@@ -32,6 +35,7 @@ public class LoginService implements LoginUseCase {
         }
 
         SessionToken sessionToken = tokenServicePort.issueToken(user.id(), user.email());
-        return new LoginResult(sessionToken.value(), sessionToken.expiresAt());
+        String refreshToken = refreshSessionManager.issue(user.id());
+        return new LoginResult(sessionToken.value(), sessionToken.expiresAt(), refreshToken);
     }
 }

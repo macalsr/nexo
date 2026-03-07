@@ -82,6 +82,11 @@ Common environment variables:
 - `APP_WEB_CORS_ALLOWED_ORIGINS`
 - `APP_AUTH_JWT_SECRET`
 - `APP_AUTH_JWT_ACCESS_TOKEN_TTL`
+- `APP_AUTH_REFRESH_TOKEN_TTL`
+- `APP_AUTH_REFRESH_TOKEN_COOKIE_NAME`
+- `APP_AUTH_REFRESH_TOKEN_COOKIE_PATH`
+- `APP_AUTH_REFRESH_TOKEN_COOKIE_SAME_SITE`
+- `APP_AUTH_REFRESH_TOKEN_COOKIE_SECURE`
 - `APP_AUTH_PASSWORD_RESET_TOKEN_TTL`
 - `APP_AUTH_EMAIL_VERIFICATION_TOKEN_TTL`
 
@@ -95,6 +100,9 @@ Public endpoints:
 - `GET /health`
 - `POST /auth/login`
 - `POST /auth/signup`
+- `POST /auth/refresh`
+- `POST /auth/logout`
+- `POST /auth/logout-all`
 - `POST /auth/forgot-password`
 - `POST /auth/reset-password`
 - `POST /auth/verify-email?token=...`
@@ -104,8 +112,13 @@ Protected endpoints:
 - `POST /auth/resend-verification`
 
 Authentication behavior:
-- Uses Bearer JWT tokens.
-- Protected routes return `401` for missing/invalid/expired tokens.
+- Uses short-lived Bearer JWT access tokens (default: 15 minutes).
+- Uses long-lived refresh tokens (default: 30 days) in HttpOnly cookies.
+- `POST /auth/refresh` rotates refresh tokens (old token becomes invalid).
+- `POST /auth/logout` revokes the current refresh session.
+- `POST /auth/logout-all` revokes all refresh sessions for the refresh-token owner.
+- Protected routes return `401` for missing/invalid access tokens, and `Access token expired` when JWT is expired.
+- Invalid or compromised refresh tokens return `401` with `Invalid refresh token`.
 - CORS preflight (`OPTIONS`) is allowed on protected routes.
 
 ## Project structure
@@ -146,6 +159,12 @@ The backend follows DDD + hexagonal architecture:
 - CI validates backend tests with PostgreSQL + Flyway migrations.
 
 ## Feature updates
+
+### 2026-03-07 - Refresh token sessions and rotation
+- Added cookie-based refresh token sessions with persistence, rotation, and revocation support.
+- Added `POST /auth/refresh`, `POST /auth/logout`, and `POST /auth/logout-all`.
+- Added clear auth failure semantics for expired access token vs invalid refresh token.
+- Why it matters: users stay signed in over time without weakening basic session security.
 
 ### 2026-03-07 - DDD package refactor
 - Consolidated backend packages around explicit hexagonal boundaries (`application`, `domain`, `adapters`, `infrastructure`).

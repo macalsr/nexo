@@ -14,6 +14,11 @@ export function storeAccessToken(token: string, rememberMe: boolean) {
   storage.setItem(ACCESS_TOKEN_KEY, token)
 }
 
+export function replaceAccessToken(token: string) {
+  const rememberMe = window.localStorage.getItem(ACCESS_TOKEN_KEY) !== null
+  storeAccessToken(token, rememberMe)
+}
+
 export function clearAccessToken() {
   window.localStorage.removeItem(ACCESS_TOKEN_KEY)
   window.sessionStorage.removeItem(ACCESS_TOKEN_KEY)

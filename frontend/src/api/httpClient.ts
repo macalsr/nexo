@@ -1,5 +1,5 @@
 import { env } from '../config/env'
-import { getAccessToken } from '../auth/tokenStorage'
+import { clearAccessToken, getAccessToken, replaceAccessToken } from '../auth/tokenStorage'
 
 type Primitive = string | number | boolean | null
 type JsonValue = Primitive | JsonValue[] | { [key: string]: JsonValue }
@@ -52,6 +52,11 @@ function buildHeaders(customHeaders?: HeadersInit) {
   return headers
 }
 
+function canAttemptRefresh(path: string) {
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`
+  return !normalizedPath.startsWith('/auth/')
+}
+
 async function parseResponseBody(response: Response): Promise<JsonValue | undefined> {
   if (response.status === 204) {
     return undefined
@@ -66,16 +71,52 @@ async function parseResponseBody(response: Response): Promise<JsonValue | undefi
   return (await response.json()) as JsonValue
 }
 
-export async function request<TResponse>(path: string, options: RequestOptions = {}) {
+async function executeRequest(path: string, options: RequestOptions = {}) {
   const url = buildUrl(path)
   const headers = buildHeaders(options.headers)
 
-  const response = await fetch(url, {
+  return fetch(url, {
     method: options.method ?? 'GET',
     headers,
     body: options.body ? JSON.stringify(options.body) : undefined,
     signal: options.signal,
+    credentials: 'include',
   })
+}
+
+async function tryRefreshAccessToken() {
+  const refreshUrl = buildUrl('/auth/refresh')
+  const response = await fetch(refreshUrl, {
+    method: 'POST',
+    credentials: 'include',
+    headers: new Headers({ Accept: 'application/json' }),
+  })
+
+  if (!response.ok) {
+    return false
+  }
+
+  const refreshed = (await parseResponseBody(response)) as { accessToken?: string } | undefined
+  if (!refreshed?.accessToken) {
+    return false
+  }
+
+  replaceAccessToken(refreshed.accessToken)
+  return true
+}
+
+export async function request<TResponse>(path: string, options: RequestOptions = {}) {
+  const url = buildUrl(path)
+  let response = await executeRequest(path, options)
+
+  if (response.status === 401 && getAccessToken() && canAttemptRefresh(path)) {
+    const refreshed = await tryRefreshAccessToken()
+    if (refreshed) {
+      response = await executeRequest(path, options)
+    } else {
+      clearAccessToken()
+    }
+  }
 
   const responseBody = await parseResponseBody(response)
 

@@ -7,6 +7,6 @@ public class StubPasswordResetDeliveryAdapter implements PasswordResetDeliveryPo
 
     @Override
     public void deliver(String email, String token, Instant expiresAt) {
-        // Email delivery is intentionally stubbed for now.
+        //Todo Email delivery is intentionally stubbed for now.
     }
 }

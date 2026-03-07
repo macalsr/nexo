@@ -48,6 +48,7 @@ class AuthControllerTest {
     void cleanUsers() throws Exception {
         try (Connection connection = dataSource.getConnection();
              Statement statement = connection.createStatement()) {
+            statement.executeUpdate("DELETE FROM refresh_sessions");
             statement.executeUpdate("DELETE FROM email_verification_tokens");
             statement.executeUpdate("DELETE FROM password_reset_tokens");
             statement.executeUpdate("DELETE FROM users");
@@ -71,6 +72,7 @@ class AuthControllerTest {
 
         assertThat(response.statusCode()).isEqualTo(200);
         assertThat(responseBody).containsKeys("accessToken", "expiresAt");
+        assertThat(response.headers().firstValue("set-cookie").orElse("")).contains("nexo_refresh_token=");
         assertThat(responseBody.get("accessToken")).isInstanceOf(String.class);
         assertThat(tokenServicePort.verify((String) responseBody.get("accessToken")).email())
                 .isEqualTo("person@example.com");
@@ -106,6 +108,7 @@ class AuthControllerTest {
 
         assertThat(response.statusCode()).isEqualTo(201);
         assertThat(responseBody).containsKeys("accessToken", "expiresAt");
+        assertThat(response.headers().firstValue("set-cookie").orElse("")).contains("nexo_refresh_token=");
         assertThat(tokenServicePort.verify((String) responseBody.get("accessToken")).email())
                 .isEqualTo("person@example.com");
         assertThat(Instant.parse((String) responseBody.get("expiresAt")))
@@ -117,6 +120,97 @@ class AuthControllerTest {
         assertThat(storedUser).containsEntry("email_verified", false);
         assertThat(storedUser.get("created_at")).isNotNull();
         assertThat(countEmailVerificationTokens()).isEqualTo(1);
+    }
+
+    @Test
+    void refreshRotatesRefreshTokenAndReturnsNewAccessToken() throws Exception {
+        insertUser("person@example.com", passwordEncoder.encode("secret123"));
+        HttpResponse<String> loginResponse = sendLogin("person@example.com", "secret123");
+        String refreshCookie = extractRefreshCookie(loginResponse);
+
+        HttpResponse<String> refreshResponse = HttpClient.newHttpClient().send(
+                HttpRequest.newBuilder()
+                        .uri(URI.create("http://localhost:" + port + "/auth/refresh"))
+                        .header("Cookie", refreshCookie)
+                        .POST(HttpRequest.BodyPublishers.noBody())
+                        .build(),
+                HttpResponse.BodyHandlers.ofString());
+
+        Map<String, Object> responseBody = objectMapper.readValue(refreshResponse.body(), Map.class);
+        assertThat(refreshResponse.statusCode()).isEqualTo(200);
+        assertThat(responseBody).containsKeys("accessToken", "expiresAt");
+        assertThat(refreshResponse.headers().firstValue("set-cookie").orElse("")).contains("nexo_refresh_token=");
+        assertThat(countRefreshSessions()).isEqualTo(2);
+    }
+
+    @Test
+    void refreshRejectsInvalidToken() throws Exception {
+        HttpResponse<String> refreshResponse = HttpClient.newHttpClient().send(
+                HttpRequest.newBuilder()
+                        .uri(URI.create("http://localhost:" + port + "/auth/refresh"))
+                        .header("Cookie", "nexo_refresh_token=invalid")
+                        .POST(HttpRequest.BodyPublishers.noBody())
+                        .build(),
+                HttpResponse.BodyHandlers.ofString());
+
+        Map<String, Object> responseBody = objectMapper.readValue(refreshResponse.body(), Map.class);
+        assertThat(refreshResponse.statusCode()).isEqualTo(401);
+        assertThat(responseBody).containsEntry("message", "Invalid refresh token");
+    }
+
+    @Test
+    void logoutRevokesCurrentRefreshSession() throws Exception {
+        insertUser("person@example.com", passwordEncoder.encode("secret123"));
+        HttpResponse<String> loginResponse = sendLogin("person@example.com", "secret123");
+        String refreshCookie = extractRefreshCookie(loginResponse);
+
+        HttpResponse<String> logoutResponse = HttpClient.newHttpClient().send(
+                HttpRequest.newBuilder()
+                        .uri(URI.create("http://localhost:" + port + "/auth/logout"))
+                        .header("Cookie", refreshCookie)
+                        .POST(HttpRequest.BodyPublishers.noBody())
+                        .build(),
+                HttpResponse.BodyHandlers.ofString());
+
+        assertThat(logoutResponse.statusCode()).isEqualTo(204);
+        assertThat(logoutResponse.headers().firstValue("set-cookie").orElse(""))
+                .contains("nexo_refresh_token=");
+        assertThat(countActiveRefreshSessions()).isZero();
+    }
+
+    @Test
+    void logoutAllRevokesAllUserRefreshSessions() throws Exception {
+        insertUser("person@example.com", passwordEncoder.encode("secret123"));
+        HttpResponse<String> firstLogin = sendLogin("person@example.com", "secret123");
+        sendLogin("person@example.com", "secret123");
+        String refreshCookie = extractRefreshCookie(firstLogin);
+
+        assertThat(countActiveRefreshSessions()).isEqualTo(2);
+
+        HttpResponse<String> logoutAllResponse = HttpClient.newHttpClient().send(
+                HttpRequest.newBuilder()
+                        .uri(URI.create("http://localhost:" + port + "/auth/logout-all"))
+                        .header("Cookie", refreshCookie)
+                        .POST(HttpRequest.BodyPublishers.noBody())
+                        .build(),
+                HttpResponse.BodyHandlers.ofString());
+
+        assertThat(logoutAllResponse.statusCode()).isEqualTo(204);
+        assertThat(countActiveRefreshSessions()).isZero();
+    }
+
+    @Test
+    void logoutAllRejectsMissingRefreshCookie() throws Exception {
+        HttpResponse<String> response = HttpClient.newHttpClient().send(
+                HttpRequest.newBuilder()
+                        .uri(URI.create("http://localhost:" + port + "/auth/logout-all"))
+                        .POST(HttpRequest.BodyPublishers.noBody())
+                        .build(),
+                HttpResponse.BodyHandlers.ofString());
+
+        Map<String, Object> responseBody = objectMapper.readValue(response.body(), Map.class);
+        assertThat(response.statusCode()).isEqualTo(401);
+        assertThat(responseBody).containsEntry("message", "Invalid refresh token");
     }
 
     @Test
@@ -463,6 +557,36 @@ class AuthControllerTest {
             assertThat(resultSet.next()).isTrue();
             return resultSet.getInt(1);
         }
+    }
+
+    private int countRefreshSessions() throws Exception {
+        try (Connection connection = dataSource.getConnection();
+             PreparedStatement statement = connection.prepareStatement(
+                     "SELECT COUNT(*) FROM refresh_sessions");
+             ResultSet resultSet = statement.executeQuery()) {
+            assertThat(resultSet.next()).isTrue();
+            return resultSet.getInt(1);
+        }
+    }
+
+    private int countActiveRefreshSessions() throws Exception {
+        try (Connection connection = dataSource.getConnection();
+             PreparedStatement statement = connection.prepareStatement(
+                     "SELECT COUNT(*) FROM refresh_sessions WHERE revoked_at IS NULL");
+             ResultSet resultSet = statement.executeQuery()) {
+            assertThat(resultSet.next()).isTrue();
+            return resultSet.getInt(1);
+        }
+    }
+
+    private String extractRefreshCookie(HttpResponse<String> response) {
+        String setCookie = response.headers().firstValue("set-cookie").orElseThrow();
+        int separatorIndex = setCookie.indexOf(';');
+        if (separatorIndex < 0) {
+            return setCookie;
+        }
+
+        return setCookie.substring(0, separatorIndex);
     }
 
     private void insertPasswordResetToken(

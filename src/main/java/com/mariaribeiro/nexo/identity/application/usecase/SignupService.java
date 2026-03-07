@@ -15,6 +15,7 @@ public class SignupService implements SignupUseCase {
     private final PasswordHashEncoderPort passwordHashEncoderPort;
     private final TokenServicePort tokenServicePort;
     private final IssueEmailVerificationUseCase issueEmailVerificationUseCase;
+    private final RefreshSessionManager refreshSessionManager;
     private final Clock clock;
 
     public SignupService(
@@ -22,11 +23,13 @@ public class SignupService implements SignupUseCase {
             PasswordHashEncoderPort passwordHashEncoderPort,
             TokenServicePort tokenServicePort,
             IssueEmailVerificationUseCase issueEmailVerificationUseCase,
+            RefreshSessionManager refreshSessionManager,
             Clock clock) {
         this.createUserPort = createUserPort;
         this.passwordHashEncoderPort = passwordHashEncoderPort;
         this.tokenServicePort = tokenServicePort;
         this.issueEmailVerificationUseCase = issueEmailVerificationUseCase;
+        this.refreshSessionManager = refreshSessionManager;
         this.clock = clock;
     }
 
@@ -50,6 +53,7 @@ public class SignupService implements SignupUseCase {
                 createdUser.createdAt()));
 
         SessionToken sessionToken = tokenServicePort.issueToken(createdUser.id(), createdUser.email().value());
-        return new SignupResult(sessionToken.value(), sessionToken.expiresAt());
+        String refreshToken = refreshSessionManager.issue(createdUser.id());
+        return new SignupResult(sessionToken.value(), sessionToken.expiresAt(), refreshToken);
     }
 }

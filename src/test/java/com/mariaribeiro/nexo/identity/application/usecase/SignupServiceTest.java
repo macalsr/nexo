@@ -23,12 +23,14 @@ class SignupServiceTest {
     private final PasswordHashEncoderPort passwordHashEncoderPort = mock(PasswordHashEncoderPort.class);
     private final TokenServicePort tokenServicePort = mock(TokenServicePort.class);
     private final IssueEmailVerificationUseCase issueEmailVerificationUseCase = mock(IssueEmailVerificationUseCase.class);
+    private final RefreshSessionManager refreshSessionManager = mock(RefreshSessionManager.class);
     private final Clock clock = Clock.fixed(Instant.parse("2026-03-06T12:00:00Z"), ZoneOffset.UTC);
     private final SignupService signupService = new SignupService(
             createUserPort,
             passwordHashEncoderPort,
             tokenServicePort,
             issueEmailVerificationUseCase,
+            refreshSessionManager,
             clock);
 
     @Test
@@ -38,11 +40,13 @@ class SignupServiceTest {
         when(createUserPort.create(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(tokenServicePort.issueToken(any(UUID.class), any(String.class)))
                 .thenReturn(new SessionToken("token-value", expiresAt));
+        when(refreshSessionManager.issue(any(UUID.class))).thenReturn("refresh-token-value");
 
         SignupResult result = signupService.signup(new SignupCommand(" Person@Example.com ", "secret123"));
 
         assertThat(result.accessToken()).isEqualTo("token-value");
         assertThat(result.expiresAt()).isEqualTo(expiresAt);
+        assertThat(result.refreshToken()).isEqualTo("refresh-token-value");
         verify(issueEmailVerificationUseCase).issueVerificationFor(any(AuthenticatedUserView.class));
     }
 
