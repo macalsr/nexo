@@ -45,7 +45,12 @@ frontend/
 
 src/main/java/com/mariaribeiro/nexo
 +-- NexoApplication.java
-+-- api/HealthController.java
++-- adapters/in/rest/HealthController.java
++-- identity/application/...
++-- identity/domain/...
++-- identity/adapters/in/rest/...
++-- identity/adapters/out/...
++-- identity/infrastructure/config/...
 
 src/main/resources
 +-- application.properties
@@ -393,6 +398,13 @@ Mandatory documentation rule:
 
 ## 14. Feature Changelog (Portfolio)
 > This section must be updated for every feature.
+
+### 2026-03-07 - DDD Package Refactor (FOUNDATION)
+- Refactored backend package structure to align explicitly with DDD/hexagonal boundaries: `application`, `domain`, `adapters/in`, `adapters/out`, and `infrastructure/config`.
+- Moved identity REST, persistence, notification, and security adapter code from legacy `interfaces`/`infrastructure` package names into `identity/adapters/...` without changing endpoint contracts or behavior.
+- Moved health controller into `adapters/in/rest` to keep inbound HTTP adapters consistently grouped.
+- Updated backend tests to the new package structure and stabilized token-expiry assertions to be time-relative.
+- Why it matters: makes architectural intent obvious to reviewers and lowers maintenance cost by keeping dependency direction and boundaries explicit in code layout.
 
 ### 2026-03-06 - User Persistence Foundation (FOUNDATION)
 - Added a `users` table migration with `email`, `password_hash`, `created_at`, and UUID primary key.
