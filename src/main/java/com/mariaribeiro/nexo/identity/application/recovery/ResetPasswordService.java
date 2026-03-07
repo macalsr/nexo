@@ -7,8 +7,12 @@ import com.mariaribeiro.nexo.identity.application.port.UpdateUserPasswordPort;
 import com.mariaribeiro.nexo.identity.domain.model.PasswordResetToken;
 import java.time.Clock;
 import java.time.Instant;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
 
-public class ResetPasswordService implements ResetPasswordUseCase {
+@Service
+@RequiredArgsConstructor
+public class ResetPasswordService {
 
     private final LoadPasswordResetTokenPort loadPasswordResetTokenPort;
     private final UpdateUserPasswordPort updateUserPasswordPort;
@@ -16,20 +20,6 @@ public class ResetPasswordService implements ResetPasswordUseCase {
     private final PasswordHashEncoderPort passwordHashEncoderPort;
     private final Clock clock;
 
-    public ResetPasswordService(
-            LoadPasswordResetTokenPort loadPasswordResetTokenPort,
-            UpdateUserPasswordPort updateUserPasswordPort,
-            DeletePasswordResetTokenPort deletePasswordResetTokenPort,
-            PasswordHashEncoderPort passwordHashEncoderPort,
-            Clock clock) {
-        this.loadPasswordResetTokenPort = loadPasswordResetTokenPort;
-        this.updateUserPasswordPort = updateUserPasswordPort;
-        this.deletePasswordResetTokenPort = deletePasswordResetTokenPort;
-        this.passwordHashEncoderPort = passwordHashEncoderPort;
-        this.clock = clock;
-    }
-
-    @Override
     public void resetPassword(ResetPasswordCommand command) {
         PasswordResetToken passwordResetToken = loadPasswordResetTokenPort.findByToken(command.token())
                 .orElseThrow(InvalidResetTokenException::new);

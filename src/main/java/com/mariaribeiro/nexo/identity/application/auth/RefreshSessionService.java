@@ -2,23 +2,17 @@ package com.mariaribeiro.nexo.identity.application.auth;
 
 import com.mariaribeiro.nexo.identity.application.port.LoadUserByIdPort;
 import com.mariaribeiro.nexo.identity.application.port.TokenServicePort;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
 
-public class RefreshSessionService implements RefreshSessionUseCase {
+@Service
+@RequiredArgsConstructor
+public class RefreshSessionService {
 
     private final RefreshSessionManager refreshSessionManager;
     private final LoadUserByIdPort loadUserByIdPort;
     private final TokenServicePort tokenServicePort;
 
-    public RefreshSessionService(
-            RefreshSessionManager refreshSessionManager,
-            LoadUserByIdPort loadUserByIdPort,
-            TokenServicePort tokenServicePort) {
-        this.refreshSessionManager = refreshSessionManager;
-        this.loadUserByIdPort = loadUserByIdPort;
-        this.tokenServicePort = tokenServicePort;
-    }
-
-    @Override
     public RefreshSessionResult refresh(RefreshSessionCommand command) {
         RefreshRotationResult rotationResult = refreshSessionManager.rotateAndResolve(command.refreshToken());
 

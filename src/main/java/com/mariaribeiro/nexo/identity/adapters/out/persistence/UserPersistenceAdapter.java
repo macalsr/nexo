@@ -11,16 +11,16 @@ import com.mariaribeiro.nexo.identity.domain.model.User;
 import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
+import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.stereotype.Repository;
 
+@Repository
+@RequiredArgsConstructor
 public class UserPersistenceAdapter
         implements LoadUserByEmailPort, LoadUserByIdPort, CreateUserPort, UpdateUserPasswordPort, MarkUserEmailVerifiedPort {
 
     private final SpringDataUserRepository userRepository;
-
-    public UserPersistenceAdapter(SpringDataUserRepository userRepository) {
-        this.userRepository = userRepository;
-    }
 
     @Override
     public Optional<AuthenticatedUserView> findByEmail(String normalizedEmail) {

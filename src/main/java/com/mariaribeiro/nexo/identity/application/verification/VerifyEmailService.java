@@ -6,26 +6,18 @@ import com.mariaribeiro.nexo.identity.application.port.MarkUserEmailVerifiedPort
 import com.mariaribeiro.nexo.identity.domain.model.EmailVerificationToken;
 import java.time.Clock;
 import java.time.Instant;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
 
-public class VerifyEmailService implements VerifyEmailUseCase {
+@Service
+@RequiredArgsConstructor
+public class VerifyEmailService {
 
     private final LoadEmailVerificationTokenPort loadEmailVerificationTokenPort;
     private final MarkUserEmailVerifiedPort markUserEmailVerifiedPort;
     private final DeleteEmailVerificationTokenPort deleteEmailVerificationTokenPort;
     private final Clock clock;
 
-    public VerifyEmailService(
-            LoadEmailVerificationTokenPort loadEmailVerificationTokenPort,
-            MarkUserEmailVerifiedPort markUserEmailVerifiedPort,
-            DeleteEmailVerificationTokenPort deleteEmailVerificationTokenPort,
-            Clock clock) {
-        this.loadEmailVerificationTokenPort = loadEmailVerificationTokenPort;
-        this.markUserEmailVerifiedPort = markUserEmailVerifiedPort;
-        this.deleteEmailVerificationTokenPort = deleteEmailVerificationTokenPort;
-        this.clock = clock;
-    }
-
-    @Override
     public void verify(VerifyEmailCommand command) {
         EmailVerificationToken emailVerificationToken = loadEmailVerificationTokenPort.findByToken(command.token())
                 .orElseThrow(InvalidEmailVerificationTokenException::new);

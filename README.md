@@ -117,6 +117,7 @@ Public endpoints:
 Protected endpoints:
 - `GET /me`
 - `POST /auth/resend-verification`
+- `POST /workspaces`
 
 Authentication behavior:
 - Uses short-lived Bearer JWT access tokens (default: 15 minutes).
@@ -167,9 +168,14 @@ The backend follows DDD + hexagonal architecture:
 
 ## Feature updates
 
+### 2026-03-07 - Workspace creation endpoint
+- Added `POST /workspaces` to create a workspace and automatically add the authenticated user as `OWNER`.
+- Enforced validation for workspace name (`required`, max `120`).
+- Why it matters: users can separate contexts (for example Personal and Household) with ownership established at creation.
+
 ### 2026-03-07 - Workspace and membership schema (multi-tenant foundation)
 - Added `workspaces` and `workspace_members` tables for tenant isolation and shared-account membership.
-- Added membership uniqueness per workspace/user, role constraint (`OWNER`/`EDITOR`/`VIEWER`), and index for querying workspaces by user.
+- Added membership uniqueness per workspace/user, role field (`OWNER`/`EDITOR`/`VIEWER`), and index for querying workspaces by user.
 - Added cascade delete from workspace to memberships.
 - Why it matters: this is the minimal secure database foundation for multi-tenant collaboration.
 

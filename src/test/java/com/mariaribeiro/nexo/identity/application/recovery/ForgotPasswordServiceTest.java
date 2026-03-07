@@ -10,10 +10,10 @@ import static org.mockito.Mockito.when;
 import com.mariaribeiro.nexo.identity.application.port.CreatePasswordResetTokenPort;
 import com.mariaribeiro.nexo.identity.application.port.LoadUserByEmailPort;
 import com.mariaribeiro.nexo.identity.application.port.PasswordResetDeliveryPort;
+import com.mariaribeiro.nexo.identity.adapters.out.security.PasswordResetProperties;
 import com.mariaribeiro.nexo.identity.application.auth.AuthenticatedUserView;
 import com.mariaribeiro.nexo.identity.domain.model.PasswordResetToken;
 import java.time.Clock;
-import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.Optional;
@@ -27,12 +27,17 @@ class ForgotPasswordServiceTest {
     private final CreatePasswordResetTokenPort createPasswordResetTokenPort = mock(CreatePasswordResetTokenPort.class);
     private final PasswordResetDeliveryPort passwordResetDeliveryPort = mock(PasswordResetDeliveryPort.class);
     private final Clock clock = Clock.fixed(Instant.parse("2026-03-06T12:00:00Z"), ZoneOffset.UTC);
+    private final PasswordResetProperties passwordResetProperties = new PasswordResetProperties();
     private final ForgotPasswordService forgotPasswordService = new ForgotPasswordService(
             loadUserByEmailPort,
             createPasswordResetTokenPort,
             passwordResetDeliveryPort,
             clock,
-            Duration.ofMinutes(15));
+            passwordResetProperties);
+
+    ForgotPasswordServiceTest() {
+        passwordResetProperties.setTokenTtl(java.time.Duration.ofMinutes(15));
+    }
 
     @Test
     void createsExpiringResetTokenAndInvokesDeliveryForExistingUser() {

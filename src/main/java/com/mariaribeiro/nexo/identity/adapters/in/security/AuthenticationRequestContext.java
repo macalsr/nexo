@@ -2,7 +2,9 @@ package com.mariaribeiro.nexo.identity.adapters.in.security;
 
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.Optional;
+import org.springframework.stereotype.Component;
 
+@Component
 public class AuthenticationRequestContext {
 
     public static final String AUTHENTICATED_USER_ATTRIBUTE = "authenticatedUser";

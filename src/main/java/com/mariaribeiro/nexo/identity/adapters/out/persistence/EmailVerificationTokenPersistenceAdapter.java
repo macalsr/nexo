@@ -6,16 +6,15 @@ import com.mariaribeiro.nexo.identity.application.port.LoadEmailVerificationToke
 import com.mariaribeiro.nexo.identity.domain.model.EmailVerificationToken;
 import java.util.Optional;
 import java.util.UUID;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Repository;
 
+@Repository
+@RequiredArgsConstructor
 public class EmailVerificationTokenPersistenceAdapter
         implements CreateEmailVerificationTokenPort, LoadEmailVerificationTokenPort, DeleteEmailVerificationTokenPort {
 
     private final SpringDataEmailVerificationTokenRepository emailVerificationTokenRepository;
-
-    public EmailVerificationTokenPersistenceAdapter(
-            SpringDataEmailVerificationTokenRepository emailVerificationTokenRepository) {
-        this.emailVerificationTokenRepository = emailVerificationTokenRepository;
-    }
 
     @Override
     public EmailVerificationToken save(EmailVerificationToken emailVerificationToken) {

@@ -1,14 +1,14 @@
 package com.mariaribeiro.nexo.identity.application.auth;
 
-public class LogoutAllService implements LogoutAllUseCase {
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+
+@Service
+@RequiredArgsConstructor
+public class LogoutAllService {
 
     private final RefreshSessionManager refreshSessionManager;
 
-    public LogoutAllService(RefreshSessionManager refreshSessionManager) {
-        this.refreshSessionManager = refreshSessionManager;
-    }
-
-    @Override
     public void logoutAll(RefreshSessionCommand command) {
         var userId = refreshSessionManager.validateActiveUserId(command.refreshToken());
         refreshSessionManager.revokeAll(userId);

@@ -14,7 +14,9 @@ import java.time.Clock;
 import java.time.Instant;
 import java.util.Date;
 import java.util.UUID;
+import org.springframework.stereotype.Component;
 
+@Component
 public class JwtTokenService implements TokenServicePort {
 
     private final Clock clock;

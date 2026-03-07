@@ -6,15 +6,15 @@ import com.mariaribeiro.nexo.identity.application.port.LoadPasswordResetTokenPor
 import com.mariaribeiro.nexo.identity.domain.model.PasswordResetToken;
 import java.util.Optional;
 import java.util.UUID;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Repository;
 
+@Repository
+@RequiredArgsConstructor
 public class PasswordResetTokenPersistenceAdapter
         implements CreatePasswordResetTokenPort, LoadPasswordResetTokenPort, DeletePasswordResetTokenPort {
 
     private final SpringDataPasswordResetTokenRepository passwordResetTokenRepository;
-
-    public PasswordResetTokenPersistenceAdapter(SpringDataPasswordResetTokenRepository passwordResetTokenRepository) {
-        this.passwordResetTokenRepository = passwordResetTokenRepository;
-    }
 
     @Override
     public PasswordResetToken save(PasswordResetToken passwordResetToken) {

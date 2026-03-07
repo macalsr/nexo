@@ -1,14 +1,14 @@
 package com.mariaribeiro.nexo.identity.application.auth;
 
-public class LogoutService implements LogoutUseCase {
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+
+@Service
+@RequiredArgsConstructor
+public class LogoutService {
 
     private final RefreshSessionManager refreshSessionManager;
 
-    public LogoutService(RefreshSessionManager refreshSessionManager) {
-        this.refreshSessionManager = refreshSessionManager;
-    }
-
-    @Override
     public void logout(RefreshSessionCommand command) {
         refreshSessionManager.revoke(command.refreshToken());
     }

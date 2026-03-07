@@ -2,7 +2,9 @@ package com.mariaribeiro.nexo.identity.adapters.out.notification;
 
 import com.mariaribeiro.nexo.identity.application.port.EmailVerificationDeliveryPort;
 import java.time.Instant;
+import org.springframework.stereotype.Component;
 
+@Component
 public class StubEmailVerificationDeliveryAdapter implements EmailVerificationDeliveryPort {
 
     @Override

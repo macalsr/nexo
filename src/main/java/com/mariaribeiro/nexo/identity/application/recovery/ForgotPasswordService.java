@@ -3,35 +3,25 @@ package com.mariaribeiro.nexo.identity.application.recovery;
 import com.mariaribeiro.nexo.identity.application.port.CreatePasswordResetTokenPort;
 import com.mariaribeiro.nexo.identity.application.port.LoadUserByEmailPort;
 import com.mariaribeiro.nexo.identity.application.port.PasswordResetDeliveryPort;
+import com.mariaribeiro.nexo.identity.adapters.out.security.PasswordResetProperties;
 import com.mariaribeiro.nexo.identity.domain.model.EmailAddress;
 import com.mariaribeiro.nexo.identity.domain.model.PasswordResetToken;
 import java.time.Clock;
-import java.time.Duration;
 import java.time.Instant;
 import java.util.UUID;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
 
-public class ForgotPasswordService implements ForgotPasswordUseCase {
+@Service
+@RequiredArgsConstructor
+public class ForgotPasswordService {
 
     private final LoadUserByEmailPort loadUserByEmailPort;
     private final CreatePasswordResetTokenPort createPasswordResetTokenPort;
     private final PasswordResetDeliveryPort passwordResetDeliveryPort;
     private final Clock clock;
-    private final Duration resetTokenTtl;
+    private final PasswordResetProperties passwordResetProperties;
 
-    public ForgotPasswordService(
-            LoadUserByEmailPort loadUserByEmailPort,
-            CreatePasswordResetTokenPort createPasswordResetTokenPort,
-            PasswordResetDeliveryPort passwordResetDeliveryPort,
-            Clock clock,
-            Duration resetTokenTtl) {
-        this.loadUserByEmailPort = loadUserByEmailPort;
-        this.createPasswordResetTokenPort = createPasswordResetTokenPort;
-        this.passwordResetDeliveryPort = passwordResetDeliveryPort;
-        this.clock = clock;
-        this.resetTokenTtl = resetTokenTtl;
-    }
-
-    @Override
     public void requestReset(ForgotPasswordCommand command) {
         String normalizedEmail = EmailAddress.of(command.email()).value();
         loadUserByEmailPort.findByEmail(normalizedEmail)
@@ -41,7 +31,7 @@ public class ForgotPasswordService implements ForgotPasswordUseCase {
                             user.id(),
                             UUID.randomUUID().toString(),
                             issuedAt,
-                            resetTokenTtl);
+                            passwordResetProperties.getTokenTtl());
 
                     createPasswordResetTokenPort.save(passwordResetToken);
                     passwordResetDeliveryPort.deliver(

@@ -4,26 +4,18 @@ import com.mariaribeiro.nexo.identity.application.port.LoadUserByEmailPort;
 import com.mariaribeiro.nexo.identity.application.port.PasswordHashVerifierPort;
 import com.mariaribeiro.nexo.identity.application.port.TokenServicePort;
 import com.mariaribeiro.nexo.identity.domain.model.EmailAddress;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
 
-public class LoginService implements LoginUseCase {
+@Service
+@RequiredArgsConstructor
+public class LoginService {
 
     private final LoadUserByEmailPort loadUserByEmailPort;
     private final PasswordHashVerifierPort passwordHashVerifierPort;
     private final TokenServicePort tokenServicePort;
     private final RefreshSessionManager refreshSessionManager;
 
-    public LoginService(
-            LoadUserByEmailPort loadUserByEmailPort,
-            PasswordHashVerifierPort passwordHashVerifierPort,
-            TokenServicePort tokenServicePort,
-            RefreshSessionManager refreshSessionManager) {
-        this.loadUserByEmailPort = loadUserByEmailPort;
-        this.passwordHashVerifierPort = passwordHashVerifierPort;
-        this.tokenServicePort = tokenServicePort;
-        this.refreshSessionManager = refreshSessionManager;
-    }
-
-    @Override
     public LoginResult login(LoginCommand command) {
         String normalizedEmail = EmailAddress.of(command.email()).value();
 

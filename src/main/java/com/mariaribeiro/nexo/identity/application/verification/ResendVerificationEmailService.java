@@ -2,24 +2,20 @@ package com.mariaribeiro.nexo.identity.application.verification;
 
 import com.mariaribeiro.nexo.identity.application.port.LoadUserByEmailPort;
 import com.mariaribeiro.nexo.identity.domain.model.EmailAddress;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
 
-public class ResendVerificationEmailService implements ResendVerificationEmailUseCase {
+@Service
+@RequiredArgsConstructor
+public class ResendVerificationEmailService {
 
     private final LoadUserByEmailPort loadUserByEmailPort;
-    private final IssueEmailVerificationUseCase issueEmailVerificationUseCase;
+    private final IssueEmailVerificationService issueEmailVerificationService;
 
-    public ResendVerificationEmailService(
-            LoadUserByEmailPort loadUserByEmailPort,
-            IssueEmailVerificationUseCase issueEmailVerificationUseCase) {
-        this.loadUserByEmailPort = loadUserByEmailPort;
-        this.issueEmailVerificationUseCase = issueEmailVerificationUseCase;
-    }
-
-    @Override
     public void resend(String email) {
         String normalizedEmail = EmailAddress.of(email).value();
         loadUserByEmailPort.findByEmail(normalizedEmail)
-                .ifPresent(issueEmailVerificationUseCase::issueVerificationFor);
+                .ifPresent(issueEmailVerificationService::issueVerificationFor);
     }
 }
 

@@ -3,7 +3,9 @@ package com.mariaribeiro.nexo.identity.adapters.out.security;
 import com.mariaribeiro.nexo.identity.application.port.RefreshTokenGeneratorPort;
 import java.security.SecureRandom;
 import java.util.Base64;
+import org.springframework.stereotype.Component;
 
+@Component
 public class SecureRefreshTokenGenerator implements RefreshTokenGeneratorPort {
 
     private final SecureRandom secureRandom = new SecureRandom();

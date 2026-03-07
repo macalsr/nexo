@@ -6,17 +6,19 @@ import java.time.Clock;
 import java.time.Instant;
 import java.util.Locale;
 import java.util.UUID;
+import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Component;
 
-@Configuration
+@Component
 @Profile("local")
-public class LocalDevUserSeeder {
+@RequiredArgsConstructor
+public class LocalDevUserSeeder implements ApplicationRunner {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(LocalDevUserSeeder.class);
 
@@ -27,18 +29,9 @@ public class LocalDevUserSeeder {
     private final PasswordEncoder passwordEncoder;
     private final Clock authClock;
 
-    public LocalDevUserSeeder(
-            SpringDataUserRepository userRepository,
-            PasswordEncoder passwordEncoder,
-            Clock authClock) {
-        this.userRepository = userRepository;
-        this.passwordEncoder = passwordEncoder;
-        this.authClock = authClock;
-    }
-
-    @Bean
-    ApplicationRunner localDevUserSeedRunner() {
-        return args -> seedDefaultUser();
+    @Override
+    public void run(ApplicationArguments args) {
+        seedDefaultUser();
     }
 
     void seedDefaultUser() {

@@ -10,7 +10,7 @@ import static org.mockito.Mockito.when;
 import com.mariaribeiro.nexo.identity.application.port.CreateUserPort;
 import com.mariaribeiro.nexo.identity.application.port.PasswordHashEncoderPort;
 import com.mariaribeiro.nexo.identity.application.port.TokenServicePort;
-import com.mariaribeiro.nexo.identity.application.verification.IssueEmailVerificationUseCase;
+import com.mariaribeiro.nexo.identity.application.verification.IssueEmailVerificationService;
 import com.mariaribeiro.nexo.identity.domain.model.User;
 import java.time.Clock;
 import java.time.Instant;
@@ -23,14 +23,14 @@ class SignupServiceTest {
     private final CreateUserPort createUserPort = mock(CreateUserPort.class);
     private final PasswordHashEncoderPort passwordHashEncoderPort = mock(PasswordHashEncoderPort.class);
     private final TokenServicePort tokenServicePort = mock(TokenServicePort.class);
-    private final IssueEmailVerificationUseCase issueEmailVerificationUseCase = mock(IssueEmailVerificationUseCase.class);
+    private final IssueEmailVerificationService issueEmailVerificationService = mock(IssueEmailVerificationService.class);
     private final RefreshSessionManager refreshSessionManager = mock(RefreshSessionManager.class);
     private final Clock clock = Clock.fixed(Instant.parse("2026-03-06T12:00:00Z"), ZoneOffset.UTC);
     private final SignupService signupService = new SignupService(
             createUserPort,
             passwordHashEncoderPort,
             tokenServicePort,
-            issueEmailVerificationUseCase,
+            issueEmailVerificationService,
             refreshSessionManager,
             clock);
 
@@ -48,7 +48,7 @@ class SignupServiceTest {
         assertThat(result.accessToken()).isEqualTo("token-value");
         assertThat(result.expiresAt()).isEqualTo(expiresAt);
         assertThat(result.refreshToken()).isEqualTo("refresh-token-value");
-        verify(issueEmailVerificationUseCase).issueVerificationFor(any(AuthenticatedUserView.class));
+        verify(issueEmailVerificationService).issueVerificationFor(any(AuthenticatedUserView.class));
     }
 
     @Test

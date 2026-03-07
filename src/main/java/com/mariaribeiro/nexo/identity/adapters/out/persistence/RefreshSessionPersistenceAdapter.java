@@ -7,16 +7,16 @@ import com.mariaribeiro.nexo.identity.domain.model.RefreshSession;
 import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
+@Repository
+@RequiredArgsConstructor
 public class RefreshSessionPersistenceAdapter
         implements SaveRefreshSessionPort, LoadRefreshSessionByTokenHashPort, RevokeAllRefreshSessionsPort {
 
     private final SpringDataRefreshSessionRepository refreshSessionRepository;
-
-    public RefreshSessionPersistenceAdapter(SpringDataRefreshSessionRepository refreshSessionRepository) {
-        this.refreshSessionRepository = refreshSessionRepository;
-    }
 
     @Override
     public RefreshSession save(RefreshSession refreshSession) {

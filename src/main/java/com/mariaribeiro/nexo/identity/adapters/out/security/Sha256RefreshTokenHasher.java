@@ -5,7 +5,9 @@ import java.nio.charset.StandardCharsets;
 import java.util.HexFormat;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import org.springframework.stereotype.Component;
 
+@Component
 public class Sha256RefreshTokenHasher implements RefreshTokenHasherPort {
 
     @Override

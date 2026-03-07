@@ -6,15 +6,15 @@ import jakarta.servlet.http.HttpServletRequest;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.Optional;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseCookie;
+import org.springframework.stereotype.Component;
 
+@Component
+@RequiredArgsConstructor
 public class RefreshCookieService {
 
     private final RefreshTokenProperties refreshTokenProperties;
-
-    public RefreshCookieService(RefreshTokenProperties refreshTokenProperties) {
-        this.refreshTokenProperties = refreshTokenProperties;
-    }
 
     public Optional<String> extractRefreshToken(HttpServletRequest request) {
         Cookie[] cookies = request.getCookies();

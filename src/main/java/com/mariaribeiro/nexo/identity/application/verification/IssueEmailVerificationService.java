@@ -4,34 +4,24 @@ import com.mariaribeiro.nexo.identity.application.auth.AuthenticatedUserView;
 import com.mariaribeiro.nexo.identity.application.port.CreateEmailVerificationTokenPort;
 import com.mariaribeiro.nexo.identity.application.port.DeleteEmailVerificationTokenPort;
 import com.mariaribeiro.nexo.identity.application.port.EmailVerificationDeliveryPort;
+import com.mariaribeiro.nexo.identity.adapters.out.security.EmailVerificationProperties;
 import com.mariaribeiro.nexo.identity.domain.model.EmailVerificationToken;
 import java.time.Clock;
-import java.time.Duration;
 import java.time.Instant;
 import java.util.UUID;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
 
-public class IssueEmailVerificationService implements IssueEmailVerificationUseCase {
+@Service
+@RequiredArgsConstructor
+public class IssueEmailVerificationService {
 
     private final CreateEmailVerificationTokenPort createEmailVerificationTokenPort;
     private final DeleteEmailVerificationTokenPort deleteEmailVerificationTokenPort;
     private final EmailVerificationDeliveryPort emailVerificationDeliveryPort;
     private final Clock clock;
-    private final Duration tokenTtl;
+    private final EmailVerificationProperties emailVerificationProperties;
 
-    public IssueEmailVerificationService(
-            CreateEmailVerificationTokenPort createEmailVerificationTokenPort,
-            DeleteEmailVerificationTokenPort deleteEmailVerificationTokenPort,
-            EmailVerificationDeliveryPort emailVerificationDeliveryPort,
-            Clock clock,
-            Duration tokenTtl) {
-        this.createEmailVerificationTokenPort = createEmailVerificationTokenPort;
-        this.deleteEmailVerificationTokenPort = deleteEmailVerificationTokenPort;
-        this.emailVerificationDeliveryPort = emailVerificationDeliveryPort;
-        this.clock = clock;
-        this.tokenTtl = tokenTtl;
-    }
-
-    @Override
     public void issueVerificationFor(AuthenticatedUserView user) {
         if (user.emailVerified()) {
             return;
@@ -42,7 +32,7 @@ public class IssueEmailVerificationService implements IssueEmailVerificationUseC
                 user.id(),
                 UUID.randomUUID().toString(),
                 issuedAt,
-                tokenTtl);
+                emailVerificationProperties.getTokenTtl());
 
         deleteEmailVerificationTokenPort.deleteByUserId(user.id());
         createEmailVerificationTokenPort.save(emailVerificationToken);
