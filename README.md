@@ -167,6 +167,12 @@ The backend follows DDD + hexagonal architecture:
 
 ## Feature updates
 
+### 2026-03-07 - Workspace and membership schema (multi-tenant foundation)
+- Added `workspaces` and `workspace_members` tables for tenant isolation and shared-account membership.
+- Added membership uniqueness per workspace/user, role constraint (`OWNER`/`EDITOR`/`VIEWER`), and index for querying workspaces by user.
+- Added cascade delete from workspace to memberships.
+- Why it matters: this is the minimal secure database foundation for multi-tenant collaboration.
+
 ### 2026-03-07 - Local development seeded auth user
 - Added a development-only startup seeder for a default local login user when the `local` profile is active.
 - Kept seeding idempotent by checking existing email before insert.
