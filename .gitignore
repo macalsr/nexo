@@ -13,7 +13,7 @@ logs/
 coverage/
 .coverage
 .nyc_output/
-out/
+/out/
 tmp/
 temp/
 .env
@@ -57,5 +57,4 @@ frontend/.env.local
 frontend/.env.*.local
 .codex/
 .codex/**
-AGENTS.md
 AGENTS.md
